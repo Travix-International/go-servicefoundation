@@ -9,6 +9,7 @@ import (
 
 	servicefoundation "github.com/Travix-International/go-servicefoundation"
 	"github.com/Travix-International/logger"
+	"github.com/rs/cors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -171,14 +172,30 @@ func TestCorsHandler(t *testing.T) {
 	const expectedOrigins = "my-origins"
 	r, _ := http.NewRequest("GET", "", nil)
 	w := httptest.NewRecorder()
-	corsOrigins := []string{expectedOrigins}
+	corsOptions := &cors.Options{AllowedOrigins: []string{expectedOrigins}}
 	innerHandlerCalled := false
 	innerHandler := func(http.ResponseWriter, *http.Request) {
 		innerHandlerCalled = true
 	}
 
 	//act
-	handler := servicefoundation.CorsHandler(corsOrigins, innerHandler)
+	handler := servicefoundation.CorsHandler(corsOptions, innerHandler)
+	handler(w, r)
+
+	assert.True(t, innerHandlerCalled)
+}
+
+func TestCorsHandlerFallbackOrigin(t *testing.T) {
+	r, _ := http.NewRequest("GET", "", nil)
+	w := httptest.NewRecorder()
+	corsOptions := &cors.Options{AllowedOrigins: []string{}}
+	innerHandlerCalled := false
+	innerHandler := func(http.ResponseWriter, *http.Request) {
+		innerHandlerCalled = true
+	}
+
+	//act
+	handler := servicefoundation.CorsHandler(corsOptions, innerHandler)
 	handler(w, r)
 
 	assert.True(t, innerHandlerCalled)
@@ -311,7 +328,7 @@ func BenchmarkCorsHandler(b *testing.B) {
 	const expectedOrigins = "my-origins"
 	r, _ := http.NewRequest("GET", "", nil)
 	w := httptest.NewRecorder()
-	corsOrigins := []string{expectedOrigins}
+	corsOptions := &cors.Options{AllowedOrigins: []string{expectedOrigins}}
 	innerHandlerCalled := false
 	innerHandler := func(http.ResponseWriter, *http.Request) {
 		innerHandlerCalled = true
@@ -319,7 +336,7 @@ func BenchmarkCorsHandler(b *testing.B) {
 
 	// benchmark
 	for i := 0; i < b.N; i++ {
-		handler := servicefoundation.CorsHandler(corsOrigins, innerHandler)
+		handler := servicefoundation.CorsHandler(corsOptions, innerHandler)
 		handler(w, r)
 	}
 }

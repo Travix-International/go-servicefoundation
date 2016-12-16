@@ -178,25 +178,13 @@ func DontCacheContextHandler(ctx AppContext, fn ContextHandler) http.HandlerFunc
 	}
 }
 
-func CorsHandler(origins []string, fn http.HandlerFunc) http.HandlerFunc {
+func CorsHandler(corsOptions *cors.Options, fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if len(origins) == 0 {
-			origins = append(origins, "*")
+		if len(corsOptions.AllowedOrigins) == 0 {
+			corsOptions.AllowedOrigins = append(corsOptions.AllowedOrigins, "*")
 		}
 
-		c := cors.New(cors.Options{
-			AllowedOrigins:   origins,
-			AllowedMethods:   []string{"GET", "HEAD", "OPTIONS"}, // Not allowed: DELETE, PUT, POST
-			AllowedHeaders:   []string{"Origin", "Accept", "Content-Type", "X-Requested-With", "X-CSRF-Token"},
-			AllowCredentials: true,
-			ExposedHeaders: []string{
-				"Access-Control-Allow-Headers",
-				"Access-Control-Allow-Methods",
-				"Access-Control-Max-Age",
-				"Access-Control-Allow-Credentials",
-				"Access-Controll-Allow-Origin",
-			},
-		})
+		c := cors.New(*corsOptions)
 
 		corsHandler := c.Handler(fn)
 		corsHandler.ServeHTTP(w, r)
