@@ -19,7 +19,7 @@ const (
 
 var (
 	svcSettings      ServiceSettings
-	appCtx           *ContextBase
+	appCtx           AppContext
 	routesFn         RoutesDefinitionFunc
 	readinessHandler ContextHandler
 )
@@ -39,7 +39,7 @@ type (
 	RoutesDefinitionFunc func(mux *http.ServeMux)
 )
 
-func Run(settings ServiceSettings, routeDefinitionFunc RoutesDefinitionFunc, readiness ContextHandler, ctx *ContextBase) {
+func Run(settings ServiceSettings, routeDefinitionFunc RoutesDefinitionFunc, readiness ContextHandler, ctx AppContext) {
 	svcSettings = settings
 	routesFn = routeDefinitionFunc
 	readinessHandler = readiness
