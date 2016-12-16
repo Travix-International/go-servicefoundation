@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/rs/cors"
 )
 
 const (
@@ -27,7 +29,7 @@ var (
 type (
 	ServiceSettings struct {
 		Name         string
-		CorsOrigins  []string
+		CorsOptions  *cors.Options
 		HttpPort     int
 		LogMinFilter string
 	}
