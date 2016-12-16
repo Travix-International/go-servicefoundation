@@ -59,8 +59,8 @@ func runReadinessServer() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", HistogramHandler(subsystem, "root", appCtx, RootHandler(subsystem, appCtx)))
-	mux.HandleFunc("/service/liveness", CounterHandler(subsystem, "liveness", appCtx, LivenessHandler))
-	mux.HandleFunc("/service/readiness", HistogramHandler(subsystem, "readiness", appCtx, readinessHandler(appCtx)))
+	mux.HandleFunc("/service/liveness", CounterHandler(subsystem, "liveness", appCtx, DontCacheHandler(LivenessHandler)))
+	mux.HandleFunc("/service/readiness", HistogramHandler(subsystem, "readiness", appCtx, DontCacheHandler(readinessHandler(appCtx))))
 
 	log.Printf("%v %v running on localhost%v.", svcSettings.Name, subsystem, port)
 	go http.ListenAndServe(port, mux)
@@ -74,7 +74,7 @@ func runInternalServer() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", HistogramHandler(subsystem, "root", appCtx, RootHandler(subsystem, appCtx)))
 	mux.HandleFunc("/health_check", CounterHandler(subsystem, "health_check", appCtx, DontCacheHandler(HealthHandler)))
-	mux.HandleFunc("/metrics", CounterHandler(subsystem, "metrics", appCtx, MetricsHandler))
+	mux.HandleFunc("/metrics", CounterHandler(subsystem, "metrics", appCtx, DontCacheHandler(MetricsHandler)))
 	mux.HandleFunc("/quit", DontCacheHandler(QuitHandler))
 
 	log.Printf("%v %v running on localhost%v.", svcSettings.Name, subsystem, port)

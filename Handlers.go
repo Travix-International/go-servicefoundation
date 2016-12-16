@@ -71,7 +71,7 @@ func LivenessHandler(w http.ResponseWriter, _ *http.Request) {
 func RootHandler(subsystem string, ctx AppContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
-			ctx.Metrics().Loggy.Warn("RootHandlerPathNotFound", fmt.Sprintf("Not found: %v %v %v", subsystem, r.Method, r.URL.Path))
+			ctx.Logger().Warn("RootHandlerPathNotFound", fmt.Sprintf("Not found: %v %v %v", subsystem, r.Method, r.URL.Path))
 			http.NotFound(w, r)
 			return
 		}
@@ -95,7 +95,7 @@ func MetricsHandler(w http.ResponseWriter, r *http.Request) {
 
 func CounterHandler(subsystem, name string, ctx AppContext, fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		defer recoverFunc(ctx.Metrics().Loggy)
+		defer recoverFunc(ctx.Logger())
 		counterName := fmt.Sprintf(counterNameTemplate, strings.ToLower(r.Method), strings.ToLower(name))
 		counterHelp := fmt.Sprintf(counterHelpTemplate, r.Method, name)
 
@@ -110,7 +110,7 @@ func CounterHandler(subsystem, name string, ctx AppContext, fn http.HandlerFunc)
 
 func HistogramHandler(subsystem, name string, ctx AppContext, fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		defer recoverFunc(ctx.Metrics().Loggy)
+		defer recoverFunc(ctx.Logger())
 		histogramName := fmt.Sprintf(histogramNameTemplate, strings.ToLower(r.Method), strings.ToLower(name))
 		histogramHelp := fmt.Sprintf(histogramHelpTemplate, r.Method, name)
 		ww := NewWrappedResponseWriter(w)
@@ -138,7 +138,7 @@ func countStatus(ctx AppContext, ww *WrappedResponseWriter, r *http.Request, sub
 
 func HistogramContextHandler(subsystem, name string, ctx AppContext, fn ContextHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		defer recoverFunc(ctx.Metrics().Loggy)
+		defer recoverFunc(ctx.Logger())
 		histogramName := fmt.Sprintf(histogramNameTemplate, strings.ToLower(r.Method), strings.ToLower(name))
 		histogramHelp := fmt.Sprintf(histogramHelpTemplate, r.Method, name)
 		ww := NewWrappedResponseWriter(w)
