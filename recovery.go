@@ -10,13 +10,13 @@ import (
 )
 
 type recovery struct {
-	loggy     *logger.Logger
+	logger     *logger.Logger
 	stackSize int
 }
 
-func newRecovery(loggy *logger.Logger) *recovery {
+func newRecovery(logger *logger.Logger) *recovery {
 	return &recovery{
-		loggy:     loggy,
+		logger:     logger,
 		stackSize: 1024 * 8,
 	}
 }
@@ -34,7 +34,7 @@ func (rec *recovery) ServeHTTP(rw http.ResponseWriter, r *http.Request, next htt
 			stack = stack[:runtime.Stack(stack, false)]
 
 			f := "PANIC: %s\n%s"
-			rec.loggy.Error("RecoveryServerHTTPError", fmt.Sprintf(f, err, stack))
+			rec.logger.Error("RecoveryServerHTTPError", fmt.Sprintf(f, err, stack))
 		}
 	}()
 

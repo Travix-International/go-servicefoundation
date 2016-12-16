@@ -191,8 +191,8 @@ func CorsHandler(corsOptions *cors.Options, fn http.HandlerFunc) http.HandlerFun
 	}
 }
 
-var recoverFunc = func(loggy *logger.Logger) {
+var recoverFunc = func(logger *logger.Logger) {
 	if rec := recover(); rec != nil {
-		loggy.Error("HandlerRecovery", fmt.Sprintf("PANIC recovered: %v", rec))
+		logger.Error("HandlerRecovery", fmt.Sprintf("PANIC recovered: %v", rec))
 	}
 }

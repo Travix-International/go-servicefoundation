@@ -19,14 +19,14 @@ func TestVersionHandler(t *testing.T) {
 	buildDate := "Mon.January.2.2006.15:04:05.-0700.MST"
 	parsedBuildDate, _ := time.Parse(buildDate, buildDate)
 
-	loggy, _ := logger.New(make(map[string]string))
+	logger, _ := logger.New(make(map[string]string))
 	ctx := NewAppContext("foo",
 		servicefoundation.AppVersion{
 			MainVersion: "mainVersion",
 			MinVersion:  "minVersion",
 			BuildDate:   parsedBuildDate,
 			GitHash:     "gitHash",
-		}, loggy)
+		}, logger)
 	r, _ := http.NewRequest("GET", "", nil)
 	w := httptest.NewRecorder()
 
@@ -61,8 +61,8 @@ func TestLivenessHandler(t *testing.T) {
 }
 
 func TestRootHandler(t *testing.T) {
-	loggy, _ := logger.New(make(map[string]string))
-	ctx := NewAppContext("foo", servicefoundation.AppVersion{}, loggy)
+	logger, _ := logger.New(make(map[string]string))
+	ctx := NewAppContext("foo", servicefoundation.AppVersion{}, logger)
 	r, _ := http.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
 
@@ -107,8 +107,8 @@ func TestCounterHandler(t *testing.T) {
 	const expectedName = "counterTest"
 	r, _ := http.NewRequest("GET", "", nil)
 	w := httptest.NewRecorder()
-	loggy, _ := logger.New(make(map[string]string))
-	ctx := NewAppContext("foo", servicefoundation.AppVersion{}, loggy)
+	logger, _ := logger.New(make(map[string]string))
+	ctx := NewAppContext("foo", servicefoundation.AppVersion{}, logger)
 	expectedHandlerCalled := false
 	expectedHandler := func(http.ResponseWriter, *http.Request) {
 		expectedHandlerCalled = true
@@ -136,8 +136,8 @@ func TestDontCacheHandler(t *testing.T) {
 }
 
 func TestDontCacheContextHandler(t *testing.T) {
-	loggy, _ := logger.New(make(map[string]string))
-	ctx := NewAppContext("foo", servicefoundation.AppVersion{}, loggy)
+	logger, _ := logger.New(make(map[string]string))
+	ctx := NewAppContext("foo", servicefoundation.AppVersion{}, logger)
 	r, _ := http.NewRequest("GET", "", nil)
 	w := httptest.NewRecorder()
 	contextHandlerCalled := false
@@ -156,8 +156,8 @@ func TestDontCacheContextHandler(t *testing.T) {
 }
 
 func TestRootHandlerWithUnknownRoute(t *testing.T) {
-	loggy, _ := logger.New(make(map[string]string))
-	ctx := NewAppContext("foo", servicefoundation.AppVersion{}, loggy)
+	logger, _ := logger.New(make(map[string]string))
+	ctx := NewAppContext("foo", servicefoundation.AppVersion{}, logger)
 	r, _ := http.NewRequest("GET", "/whoops", nil)
 	w := httptest.NewRecorder()
 
@@ -204,8 +204,8 @@ func TestCorsHandlerFallbackOrigin(t *testing.T) {
 func TestHistogramHandler(t *testing.T) {
 	const subsystem = "testSubSystem"
 	const histogramName = "histogramTest"
-	loggy, _ := logger.New(make(map[string]string))
-	ctx := NewAppContext("foo", servicefoundation.AppVersion{}, loggy)
+	logger, _ := logger.New(make(map[string]string))
+	ctx := NewAppContext("foo", servicefoundation.AppVersion{}, logger)
 	r, _ := http.NewRequest("GET", "", nil)
 	w := httptest.NewRecorder()
 	innerHandlerCalled := false
@@ -225,8 +225,8 @@ func TestHistogramHandler(t *testing.T) {
 func TestHistogramContextHandler(t *testing.T) {
 	const subsystem = "testSubSystem"
 	const histogramName = "histogramContextTest"
-	loggy, _ := logger.New(make(map[string]string))
-	ctx := NewAppContext("foo", servicefoundation.AppVersion{}, loggy)
+	logger, _ := logger.New(make(map[string]string))
+	ctx := NewAppContext("foo", servicefoundation.AppVersion{}, logger)
 	r, _ := http.NewRequest("GET", "", nil)
 	w := httptest.NewRecorder()
 	innerHandlerCalled := false
@@ -255,8 +255,8 @@ var result interface{}
 func BenchmarkHistogramHandler(b *testing.B) {
 	const subsystem = "testSubSystem"
 	const histogramName = "histogramTest"
-	loggy, _ := logger.New(make(map[string]string))
-	ctx := NewAppContext("foo", servicefoundation.AppVersion{}, loggy)
+	logger, _ := logger.New(make(map[string]string))
+	ctx := NewAppContext("foo", servicefoundation.AppVersion{}, logger)
 	r, _ := http.NewRequest("GET", "", nil)
 	w := httptest.NewRecorder()
 	innerHandlerCalled := false
@@ -276,8 +276,8 @@ func BenchmarkCounterHandler(b *testing.B) {
 	const expectedName = "counterTest"
 	r, _ := http.NewRequest("GET", "", nil)
 	w := httptest.NewRecorder()
-	loggy, _ := logger.New(make(map[string]string))
-	ctx := NewAppContext("foo", servicefoundation.AppVersion{}, loggy)
+	logger, _ := logger.New(make(map[string]string))
+	ctx := NewAppContext("foo", servicefoundation.AppVersion{}, logger)
 	expectedHandlerCalled := false
 	expectedHandler := func(http.ResponseWriter, *http.Request) {
 		expectedHandlerCalled = true
@@ -291,8 +291,8 @@ func BenchmarkCounterHandler(b *testing.B) {
 }
 
 func BenchmarkRootHandler(b *testing.B) {
-	loggy, _ := logger.New(make(map[string]string))
-	ctx := NewAppContext("foo", servicefoundation.AppVersion{}, loggy)
+	logger, _ := logger.New(make(map[string]string))
+	ctx := NewAppContext("foo", servicefoundation.AppVersion{}, logger)
 	r, _ := http.NewRequest("GET", "/whoops", nil)
 	w := httptest.NewRecorder()
 
@@ -306,8 +306,8 @@ func BenchmarkRootHandler(b *testing.B) {
 func BenchmarkHistogramContextHandler(b *testing.B) {
 	const subsystem = "testSubSystem"
 	const histogramName = "histogramContextTest"
-	loggy, _ := logger.New(make(map[string]string))
-	ctx := NewAppContext("foo", servicefoundation.AppVersion{}, loggy)
+	logger, _ := logger.New(make(map[string]string))
+	ctx := NewAppContext("foo", servicefoundation.AppVersion{}, logger)
 	r, _ := http.NewRequest("GET", "", nil)
 	w := httptest.NewRecorder()
 	innerHandlerCalled := false
@@ -342,8 +342,8 @@ func BenchmarkCorsHandler(b *testing.B) {
 }
 
 func BenchmarkDontCacheContextHandler(b *testing.B) {
-	loggy, _ := logger.New(make(map[string]string))
-	ctx := NewAppContext("foo", servicefoundation.AppVersion{}, loggy)
+	logger, _ := logger.New(make(map[string]string))
+	ctx := NewAppContext("foo", servicefoundation.AppVersion{}, logger)
 	r, _ := http.NewRequest("GET", "", nil)
 	w := httptest.NewRecorder()
 	contextHandlerCalled := false

@@ -10,10 +10,10 @@ type UnitTestAppContext struct {
 	servicefoundation.ContextBase
 }
 
-func NewAppContext(metricsNamespace string, version servicefoundation.AppVersion, loggy *logger.Logger) servicefoundation.AppContext {
+func NewAppContext(metricsNamespace string, version servicefoundation.AppVersion, logger *logger.Logger) servicefoundation.AppContext {
 	ctx := &UnitTestAppContext{}
-	ctx.SetLogger(loggy)
-	ctx.SetMetrics(metrics.NewMetrics(metricsNamespace, loggy))
+	ctx.SetLogger(logger)
+	ctx.SetMetrics(metrics.NewMetrics(metricsNamespace, logger))
 	ctx.SetVersion(version)
 	appContext := servicefoundation.AppContext(ctx)
 	return appContext
