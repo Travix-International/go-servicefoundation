@@ -95,7 +95,7 @@ func MetricsHandler(w http.ResponseWriter, r *http.Request) {
 
 func CounterHandler(subsystem, name string, ctx AppContext, fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		defer recoverFunc(ctx.Logger())
+		defer RecoverFunc(ctx.Logger())
 		counterName := fmt.Sprintf(counterNameTemplate, strings.ToLower(r.Method), strings.ToLower(name))
 		counterHelp := fmt.Sprintf(counterHelpTemplate, r.Method, name)
 
@@ -110,7 +110,7 @@ func CounterHandler(subsystem, name string, ctx AppContext, fn http.HandlerFunc)
 
 func HistogramHandler(subsystem, name string, ctx AppContext, fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		defer recoverFunc(ctx.Logger())
+		defer RecoverFunc(ctx.Logger())
 		histogramName := fmt.Sprintf(histogramNameTemplate, strings.ToLower(r.Method), strings.ToLower(name))
 		histogramHelp := fmt.Sprintf(histogramHelpTemplate, r.Method, name)
 		ww := NewWrappedResponseWriter(w)
@@ -138,7 +138,7 @@ func countStatus(ctx AppContext, ww *WrappedResponseWriter, r *http.Request, sub
 
 func HistogramContextHandler(subsystem, name string, ctx AppContext, fn ContextHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		defer recoverFunc(ctx.Logger())
+		defer RecoverFunc(ctx.Logger())
 		histogramName := fmt.Sprintf(histogramNameTemplate, strings.ToLower(r.Method), strings.ToLower(name))
 		histogramHelp := fmt.Sprintf(histogramHelpTemplate, r.Method, name)
 		ww := NewWrappedResponseWriter(w)
@@ -191,7 +191,7 @@ func CorsHandler(corsOptions *cors.Options, fn http.HandlerFunc) http.HandlerFun
 	}
 }
 
-var recoverFunc = func(logger *logger.Logger) {
+var RecoverFunc = func(logger *logger.Logger) {
 	if rec := recover(); rec != nil {
 		logger.Error("HandlerRecovery", fmt.Sprintf("PANIC recovered: %v", rec))
 	}
