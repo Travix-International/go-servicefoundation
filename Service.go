@@ -46,11 +46,7 @@ type (
 // Run starts the service, which includes the readiness http service, internal http service and the application-specific
 // http service, which typically includes a set of custom routes
 func Run(settings ServiceSettings, routeDefinitionFunc RoutesDefinitionFunc, readiness ContextHandler, ctx AppContext) {
-	svcSettings = settings
-	routesFn = routeDefinitionFunc
-	readinessHandler = readiness
-	appCtx = ctx
-
+	ConfigureService(settings, routeDefinitionFunc, readiness, ctx)
 	RunReadinessServer()
 	RunInternalServer()
 	runServer()
@@ -60,6 +56,10 @@ func Run(settings ServiceSettings, routeDefinitionFunc RoutesDefinitionFunc, rea
 // since Run will take care of that. But, this can be useful in cases where you do not want to use Run, for example to run
 // only parts of the service foundation.
 func ConfigureService(settings ServiceSettings, routeDefinitionFunc RoutesDefinitionFunc, readiness ContextHandler, ctx AppContext) {
+	svcSettings = settings
+	routesFn = routeDefinitionFunc
+	readinessHandler = readiness
+	appCtx = ctx
 }
 
 // RunReadinessServer runs the readiness service as a go-routine
