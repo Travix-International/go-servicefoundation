@@ -27,6 +27,7 @@ var (
 )
 
 type (
+	// ServiceSettings is the set of properties needed to run the base set of http services
 	ServiceSettings struct {
 		Name         string
 		CorsOptions  *cors.Options
@@ -38,21 +39,31 @@ type (
 		Message string
 	}
 
+	// RoutesDefinitionFunc is used to communicate a set of custom HTTP routes to the service foundation
 	RoutesDefinitionFunc func(mux *http.ServeMux)
 )
 
+// Run starts the service, which includes the readiness http service, internal http service and the application-specific
+// http service, which typically includes a set of custom routes
 func Run(settings ServiceSettings, routeDefinitionFunc RoutesDefinitionFunc, readiness ContextHandler, ctx AppContext) {
 	svcSettings = settings
 	routesFn = routeDefinitionFunc
 	readinessHandler = readiness
 	appCtx = ctx
 
-	runReadinessServer()
-	runInternalServer()
+	RunReadinessServer()
+	RunInternalServer()
 	runServer()
 }
 
-func runReadinessServer() {
+// ConfigureService can be used to configure the properties of the services. There's no need to call this from your application
+// since Run will take care of that. But, this can be useful in cases where you do not want to use Run, for example to run
+// only parts of the service foundation.
+func ConfigureService(settings ServiceSettings, routeDefinitionFunc RoutesDefinitionFunc, readiness ContextHandler, ctx AppContext) {
+}
+
+// RunReadinessServer runs the readiness service as a go-routine
+func RunReadinessServer() {
 	const subsystem = "readiness_service"
 
 	port := fmt.Sprintf(":%v", svcSettings.HttpPort+readinessPortOffset)
@@ -66,7 +77,8 @@ func runReadinessServer() {
 	go http.ListenAndServe(port, mux)
 }
 
-func runInternalServer() {
+// RunInternalServer runs the readiness service as a go-routine
+func RunInternalServer() {
 	const subsystem = "internal_service"
 
 	port := fmt.Sprintf(":%v", svcSettings.HttpPort+internalPortOffset)
