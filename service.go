@@ -1,4 +1,4 @@
-package site
+package go_servicefoundation
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 	"github.com/Prutswonder/go-servicefoundation/env"
 	"github.com/Prutswonder/go-servicefoundation/logging"
 	. "github.com/Prutswonder/go-servicefoundation/model"
-	"github.com/julienschmidt/httprouter"
+	"github.com/Prutswonder/go-servicefoundation/site"
 )
 
 const (
@@ -34,10 +34,11 @@ type (
 		port            int
 		log             Logger
 		metrics         Metrics
-		publicRouter    *httprouter.Router
-		readinessRouter *httprouter.Router
-		internalRouter  *httprouter.Router
+		publicRouter    *Router
+		readinessRouter *Router
+		internalRouter  *Router
 		handlerFactory  ServiceHandlerFactory
+		versionBuilder  VersionBuilder
 		exitFunc        ExitFunc
 	}
 )
@@ -53,8 +54,32 @@ func CreateService(name string, port int, options ServiceOptions) Service {
 		readinessRouter: options.RouterFactory.CreateRouter(),
 		internalRouter:  options.RouterFactory.CreateRouter(),
 		handlerFactory:  options.ServiceHandlerFactory,
+		versionBuilder:  options.VersionBuilder,
 		exitFunc:        exitFunc,
 	}
+}
+
+func CreateDefaultService(name string, allowedMethods []string, shutdownFunc ShutdownFunc) Service {
+	corsOptions := CORSOptions{
+		AllowedOrigins: env.ListOrDefault(envCORSOrigins, []string{"*"}),
+		AllowedMethods: allowedMethods,
+	}
+	logger := logging.CreateLogger(env.OrDefault(envLogMinFilter, defaultLogMinFilter))
+	metrics := logging.CreateMetrics(name, logger)
+	middlewareWrapper := site.CreateMiddlewareWrapper(logger, metrics, &corsOptions)
+	versionBuilder := site.CreateDefaultVersionBuilder()
+	exitFunc := createExitFunc(logger, shutdownFunc)
+
+	opt := ServiceOptions{
+		ServiceHandlerFactory: site.CreateServiceHandlerFactory(middlewareWrapper, versionBuilder, exitFunc),
+		RouterFactory:         site.CreateRouterFactory(),
+		Logger:                logger,
+		Metrics:               metrics,
+		VersionBuilder:        versionBuilder,
+		ShutdownFunc:          shutdownFunc,
+	}
+
+	return CreateService(name, env.AsInt(envHTTPpPort, defaultHTTPPort), opt)
 }
 
 // overwrite the default os.exit() to run delayed, giving the quit handler a chance to return a status
@@ -76,29 +101,10 @@ func createExitFunc(log Logger, shutdownFunc ShutdownFunc) func(int) {
 	}
 }
 
-func CreateDefaultService(name string, allowedMethods []string, shutdownFunc ShutdownFunc) Service {
-	corsOptions := CORSOptions{
-		AllowedOrigins: env.ListOrDefault(envCORSOrigins, []string{"*"}),
-		AllowedMethods: allowedMethods,
-	}
-	logger := logging.CreateLogger(env.OrDefault(envLogMinFilter, defaultLogMinFilter))
-	metrics := logging.CreateMetrics(name, logger)
-	middlewareWrapper := CreateMiddlewareWrapper(logger, metrics, &corsOptions)
-	exitFunc := createExitFunc(logger, shutdownFunc)
-	opt := ServiceOptions{
-		ServiceHandlerFactory: CreateServiceHandlerFactory(middlewareWrapper, exitFunc),
-		RouterFactory:         CreateRouterFactory(),
-		Logger:                logger,
-		Metrics:               metrics,
-		ShutdownFunc:          shutdownFunc,
-	}
-
-	return CreateService(name, env.AsInt(envHTTPpPort, defaultHTTPPort), opt)
-}
-
 /* Service implementation */
 
 func (s *serviceImpl) Run() {
+	s.log.Info("Service", "%s: %s", s.name, s.versionBuilder.ToString())
 	s.runReadinessServer()
 	s.runInternalServer()
 	s.runPublicServer() // blocks code execution
@@ -108,10 +114,10 @@ func (s *serviceImpl) AddRoute(name string, routes []string, methods []string, m
 	s.addRoute(s.publicRouter, publicSubsystem, name, routes, methods, middlewares, handler)
 }
 
-func (s *serviceImpl) addRoute(router *httprouter.Router, subsystem, name string, routes []string, methods []string, middlewares []Middleware, handler Handle) {
+func (s *serviceImpl) addRoute(router *Router, subsystem, name string, routes []string, methods []string, middlewares []Middleware, handler Handle) {
 	for _, path := range routes {
 		for _, method := range methods {
-			router.Handle(method, path, s.handlerFactory.WrapHandler(subsystem, name, middlewares, handler))
+			router.Router.Handle(method, path, s.handlerFactory.WrapHandler(subsystem, name, middlewares, handler))
 		}
 	}
 }
@@ -130,7 +136,7 @@ func (s *serviceImpl) runReadinessServer() {
 
 	s.log.Info("RunReadinessServer", "%s %s running on localhost%s.", s.name, subsystem, port)
 
-	go http.ListenAndServe(port, router)
+	go http.ListenAndServe(port, router.Router)
 }
 
 // RunInternalServer runs the internal service as a go-routine
@@ -148,7 +154,7 @@ func (s *serviceImpl) runInternalServer() {
 
 	s.log.Info("RunInternalServer", "%s %s running on localhost%s.", s.name, subsystem, port)
 
-	go http.ListenAndServe(port, router)
+	go http.ListenAndServe(port, router.Router)
 }
 
 // RunPublicServer runs the public service on the current thread.
@@ -174,7 +180,7 @@ func (s *serviceImpl) runPublicServer() {
 		done <- true
 	}()
 
-	go http.ListenAndServe(port, router)
+	go http.ListenAndServe(port, router.Router)
 
 	<-done // Wait for our shutdown
 

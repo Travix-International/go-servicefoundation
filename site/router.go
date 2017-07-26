@@ -8,8 +8,8 @@ import (
 type routerFactoryImpl struct {
 }
 
-func (r *routerFactoryImpl) CreateRouter() *httprouter.Router {
-	return httprouter.New()
+func (r *routerFactoryImpl) CreateRouter() *model.Router {
+	return &model.Router{Router: httprouter.New()}
 }
 
 func CreateRouterFactory() model.RouterFactory {

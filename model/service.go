@@ -8,6 +8,7 @@ type (
 		Metrics               Metrics
 		RouterFactory         RouterFactory
 		ServiceHandlerFactory ServiceHandlerFactory
+		VersionBuilder        VersionBuilder
 		ShutdownFunc          ShutdownFunc
 	}
 

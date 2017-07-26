@@ -26,6 +26,8 @@ func CreateWrappedResponseWriter(w http.ResponseWriter) model.WrappedResponseWri
 	return &wrappedResponseWriterImpl{ResponseWriter: w, status: http.StatusOK}
 }
 
+/* WrappedResponseWriter implementation */
+
 func (w *wrappedResponseWriterImpl) Status() int {
 	return w.status
 }

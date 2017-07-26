@@ -7,10 +7,18 @@ import (
 )
 
 type (
-	Handle func(WrappedResponseWriter, *http.Request, httprouter.Params)
+	Handle func(WrappedResponseWriter, *http.Request, RouterParams)
+
+	RouterParams struct {
+		Params httprouter.Params
+	}
+
+	Router struct {
+		Router *httprouter.Router
+	}
 
 	RouterFactory interface {
-		CreateRouter() *httprouter.Router
+		CreateRouter() *Router
 	}
 )
 
