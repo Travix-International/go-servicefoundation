@@ -14,7 +14,7 @@ const (
 	minDebugLevel = 1
 	minInfoLevel  = 2
 	minWarnLevel  = 3
-	minErrorLevel = 4
+	defaultLevel  = "warning"
 )
 
 type (
@@ -25,26 +25,26 @@ type (
 )
 
 var (
-	loggerInstance *loggerImpl
-	loggerMux      = &sync.Mutex{}
+	levels          = []string{"debug", "info", "warning", "error"}
+	loggerInstances = make(map[string]*loggerImpl)
+	once            sync.Once
 )
 
 func CreateLogger(logMinFilter string) model.Logger {
-	loggerMux.Lock()
-	defer loggerMux.Unlock()
+	once.Do(func() {
+		for i, level := range levels {
+			log := logger.New()
+			consoleLogFormat := logger.NewStringFormat("[%s] ", "[%s] ", "%s\n", " (%s=", "%s)")
+			consoleTransport := logger.NewTransport(os.Stdout, consoleLogFormat)
+			log.AddTransport(consoleTransport)
 
-	if loggerInstance == nil {
-		log := logger.New()
-		consoleLogFormat := logger.NewStringFormat("[%s] ", "[%s] ", "%s\n", " (%s=", "%s)")
-		consoleTransport := logger.NewTransport(os.Stdout, consoleLogFormat)
-		log.AddTransport(consoleTransport)
-
-		loggerInstance = &loggerImpl{
-			logger: log,
+			loggerInstances[level] = &loggerImpl{
+				logger:      log,
+				logMinLevel: i + 1,
+			}
 		}
-		loggerInstance.setMinLevel(logMinFilter)
-	}
-	return loggerInstance
+	})
+	return getLogInstance(logMinFilter)
 }
 
 /* Logger implementation */
@@ -90,20 +90,20 @@ func (l *loggerImpl) Error(event, formatOrMsg string, a ...interface{}) error {
 	return l.logger.Error(event, fmt.Sprintf(formatOrMsg, a...))
 }
 
-func (l *loggerImpl) setMinLevel(level string) {
-	switch strings.ToLower(level) {
-	case "debug":
-		l.logMinLevel = minDebugLevel
-	case "info":
-		l.logMinLevel = minInfoLevel
-	case "warning":
-		l.logMinLevel = minWarnLevel
-	case "error":
-		l.logMinLevel = minErrorLevel
-	default:
-		l.logMinLevel = minWarnLevel
-		l.Warn("LogMinLevel", "Failed parsing log level '%s', defaulting to 'Warning'", level)
+func getLogInstance(level string) *loggerImpl {
+	var inst *loggerImpl
+
+	for i := 0; i < len(levels); i++ {
+		if inst = loggerInstances[strings.ToLower(level)]; inst != nil {
+			break
+		}
 	}
+
+	if inst == nil {
+		inst = loggerInstances[defaultLevel]
+		inst.Warn("LogMinLevel", "Failed parsing log level '%s', defaulting to '%s'", defaultLevel)
+	}
+	return inst
 }
 
 func (l *loggerImpl) GetLogger() *logger.Logger {

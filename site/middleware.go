@@ -118,7 +118,7 @@ func (m *middlewareWrapperImpl) countStatus(w WrappedResponseWriter, r *http.Req
 	statusName := fmt.Sprintf(statusCodeNameTemplate, strings.ToLower(r.Method), strings.ToLower(name))
 	statusHelp := fmt.Sprintf(statusCodeHelpTemplate, r.Method, name, subsystem)
 	m.metrics.CountLabels(strings.ToLower(subsystem), statusName, statusHelp,
-		[]string{"status", "method"}, []string{strconv.Itoa(w.GetStatus()), r.Method})
+		[]string{"status", "method"}, []string{strconv.Itoa(w.Status()), r.Method})
 }
 
 func (m *middlewareWrapperImpl) mergeCORSOptions(options *CORSOptions) *cors.Options {

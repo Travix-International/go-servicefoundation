@@ -9,5 +9,5 @@ type WrappedResponseWriter interface {
 	AcceptsXML(r *http.Request) bool
 	WriteResponse(r *http.Request, statusCode int, content interface{})
 	SetCaching(maxAge int)
-	GetStatus() int
+	Status() int
 }

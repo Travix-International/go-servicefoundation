@@ -11,9 +11,10 @@ import (
 )
 
 const (
-	ACCEPT_HEADER = "Accept"
-	ACCEPT_JSON   = "application/json"
-	ACCEPT_XML    = "application/xml"
+	AcceptHeader      = "Accept"
+	ContentTypeHeader = "Content-Type"
+	ContentTypeJSON   = "application/json"
+	ContentTypeXML    = "application/xml"
 )
 
 type wrappedResponseWriterImpl struct {
@@ -51,14 +52,14 @@ func (w *wrappedResponseWriterImpl) WriteHeader(code int) {
 }
 
 func (w *wrappedResponseWriterImpl) JSON(statusCode int, content interface{}) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(ContentTypeHeader, ContentTypeJSON)
 	w.WriteHeader(statusCode)
 
 	json.NewEncoder(w).Encode(content)
 }
 
 func (w *wrappedResponseWriterImpl) XML(statusCode int, content interface{}) {
-	w.Header().Set("Content-Type", "application/xml")
+	w.Header().Set(ContentTypeHeader, ContentTypeXML)
 	w.WriteHeader(statusCode)
 
 	w.Write([]byte(xml.Header))
@@ -66,7 +67,8 @@ func (w *wrappedResponseWriterImpl) XML(statusCode int, content interface{}) {
 }
 
 func (w *wrappedResponseWriterImpl) AcceptsXML(r *http.Request) bool {
-	return !strings.Contains(r.Header.Get(ACCEPT_HEADER), ACCEPT_JSON) && strings.Contains(r.Header.Get(ACCEPT_HEADER), ACCEPT_XML)
+	return !strings.Contains(r.Header.Get(AcceptHeader), ContentTypeJSON) &&
+		strings.Contains(r.Header.Get(AcceptHeader), ContentTypeXML)
 }
 
 func (w *wrappedResponseWriterImpl) WriteResponse(r *http.Request, statusCode int, content interface{}) {
@@ -80,8 +82,4 @@ func (w *wrappedResponseWriterImpl) WriteResponse(r *http.Request, statusCode in
 func (w *wrappedResponseWriterImpl) SetCaching(maxAge int) {
 	w.Header().Set("Vary", "Accept, Origin") // Because we don't want to mix XML and JSON in the cache!
 	w.Header().Set("Cache-Control", fmt.Sprintf("public, max-age=%v", maxAge))
-}
-
-func (w *wrappedResponseWriterImpl) GetStatus() int {
-	return w.status
 }
