@@ -3,11 +3,11 @@ package site_test
 import (
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/Prutswonder/go-servicefoundation/model"
 	"github.com/Travix-International/logger"
 	"github.com/stretchr/testify/mock"
-	"time"
 )
 
 /* http.ResponseWriter mock */
@@ -15,6 +15,7 @@ import (
 type mockResponseWriter struct {
 	mock.Mock
 	model.WrappedResponseWriter
+	http.Flusher
 }
 
 func (m *mockResponseWriter) Header() http.Header {
@@ -55,6 +56,10 @@ func (m *mockResponseWriter) SetCaching(maxAge int) {
 func (m *mockResponseWriter) Status() int {
 	a := m.Called()
 	return a.Int(0)
+}
+
+func (m *mockResponseWriter) Flush() {
+	m.Called()
 }
 
 /* io.Reader mock */
@@ -143,4 +148,33 @@ func (m *mockMetrics) IncreaseCounter(subsystem, name, help string, increment in
 func (m *mockMetrics) AddHistogram(subsystem, name, help string) model.MetricsHistogram {
 	a := m.Called(subsystem, name, help)
 	return a.Get(0).(model.MetricsHistogram)
+}
+
+/* model.VersionBuilder mock */
+
+type mockVersionBuilder struct {
+	mock.Mock
+	model.VersionBuilder
+}
+
+func (m *mockVersionBuilder) ToString() string {
+	a := m.Called()
+	return a.String(0)
+}
+
+func (m *mockVersionBuilder) ToMap() map[string]string {
+	a := m.Called()
+	return a.Get(0).(map[string]string)
+}
+
+/* model.MiddlewareWrapper mock */
+
+type mockMiddlewareWrapper struct {
+	mock.Mock
+	model.MiddlewareWrapper
+}
+
+func (m *mockMiddlewareWrapper) Wrap(subsystem, name string, middleware model.Middleware, handler model.Handle) model.Handle {
+	a := m.Called(subsystem, name, middleware, handler)
+	return a.Get(0).(func(model.WrappedResponseWriter, *http.Request, model.RouterParams))
 }

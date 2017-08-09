@@ -12,6 +12,7 @@ import (
 	"github.com/Prutswonder/go-servicefoundation/logging"
 	. "github.com/Prutswonder/go-servicefoundation/model"
 	"github.com/Prutswonder/go-servicefoundation/site"
+	"github.com/julienschmidt/httprouter"
 )
 
 const (
