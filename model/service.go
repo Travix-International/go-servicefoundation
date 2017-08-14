@@ -4,6 +4,9 @@ type (
 	ShutdownFunc func(log Logger)
 
 	ServiceOptions struct {
+		Port                  int
+		ReadinessPort         int
+		InternalPort          int
 		Logger                Logger
 		Metrics               Metrics
 		RouterFactory         RouterFactory

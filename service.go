@@ -1,4 +1,4 @@
-package go_servicefoundation
+package servicefoundation
 
 import (
 	"fmt"
@@ -12,19 +12,15 @@ import (
 	"github.com/Prutswonder/go-servicefoundation/logging"
 	. "github.com/Prutswonder/go-servicefoundation/model"
 	"github.com/Prutswonder/go-servicefoundation/site"
-	"github.com/julienschmidt/httprouter"
 )
 
 const (
 	envCORSOrigins  string = "CORS_ORIGINS"
 	envHTTPpPort    string = "HTTPPORT"
-	defaultHTTPPort int    = 8080
+	envLogMinFilter string = "LOG_MINFILTER"
 
-	envLogMinFilter     string = "LOG_MINFILTER"
+	defaultHTTPPort     int    = 8080
 	defaultLogMinFilter string = "Warning"
-
-	readinessPortOffset = 1
-	internalPortOffset  = 2
 
 	publicSubsystem = "public"
 )
@@ -33,6 +29,8 @@ type (
 	serviceImpl struct {
 		name            string
 		port            int
+		readinessPort   int
+		internalPort    int
 		log             Logger
 		metrics         Metrics
 		publicRouter    *Router
@@ -44,11 +42,13 @@ type (
 	}
 )
 
-func CreateService(name string, port int, options ServiceOptions) Service {
+func CreateService(name string, options ServiceOptions) Service {
 	exitFunc := createExitFunc(options.Logger, options.ShutdownFunc)
 	return &serviceImpl{
 		name:            name,
-		port:            port,
+		port:            options.Port,
+		readinessPort:   options.ReadinessPort,
+		internalPort:    options.InternalPort,
 		log:             options.Logger,
 		metrics:         options.Metrics,
 		publicRouter:    options.RouterFactory.CreateRouter(),
@@ -60,6 +60,7 @@ func CreateService(name string, port int, options ServiceOptions) Service {
 	}
 }
 
+// CreateDefaultService creates and returns a Service that uses environment variables for default configuration.
 func CreateDefaultService(name string, allowedMethods []string, shutdownFunc ShutdownFunc) Service {
 	corsOptions := CORSOptions{
 		AllowedOrigins: env.ListOrDefault(envCORSOrigins, []string{"*"}),
@@ -70,8 +71,12 @@ func CreateDefaultService(name string, allowedMethods []string, shutdownFunc Shu
 	middlewareWrapper := site.CreateMiddlewareWrapper(logger, metrics, &corsOptions)
 	versionBuilder := site.CreateDefaultVersionBuilder()
 	exitFunc := createExitFunc(logger, shutdownFunc)
+	port := env.AsInt(envHTTPpPort, defaultHTTPPort)
 
 	opt := ServiceOptions{
+		Port:                  port,
+		ReadinessPort:         port + 1,
+		InternalPort:          port + 2,
 		ServiceHandlerFactory: site.CreateServiceHandlerFactory(middlewareWrapper, versionBuilder, exitFunc),
 		RouterFactory:         site.CreateRouterFactory(),
 		Logger:                logger,
@@ -80,7 +85,7 @@ func CreateDefaultService(name string, allowedMethods []string, shutdownFunc Shu
 		ShutdownFunc:          shutdownFunc,
 	}
 
-	return CreateService(name, env.AsInt(envHTTPpPort, defaultHTTPPort), opt)
+	return CreateService(name, opt)
 }
 
 // overwrite the default os.exit() to run delayed, giving the quit handler a chance to return a status
@@ -117,8 +122,10 @@ func (s *serviceImpl) AddRoute(name string, routes []string, methods []string, m
 
 func (s *serviceImpl) addRoute(router *Router, subsystem, name string, routes []string, methods []string, middlewares []Middleware, handler Handle) {
 	for _, path := range routes {
+		wrappedHandler := s.handlerFactory.WrapHandler(subsystem, name, middlewares, handler)
+
 		for _, method := range methods {
-			router.Router.Handle(method, path, s.handlerFactory.WrapHandler(subsystem, name, middlewares, handler))
+			router.Router.Handle(method, path, wrappedHandler)
 		}
 	}
 }
@@ -127,7 +134,7 @@ func (s *serviceImpl) addRoute(router *Router, subsystem, name string, routes []
 func (s *serviceImpl) runReadinessServer() {
 	const subsystem = "readiness"
 
-	port := fmt.Sprintf(":%v", s.port+readinessPortOffset)
+	port := fmt.Sprintf(":%v", s.readinessPort)
 	router := s.readinessRouter
 	fact := s.handlerFactory
 
@@ -144,7 +151,7 @@ func (s *serviceImpl) runReadinessServer() {
 func (s *serviceImpl) runInternalServer() {
 	const subsystem = "internal"
 
-	port := fmt.Sprintf(":%v", s.port+internalPortOffset)
+	port := fmt.Sprintf(":%v", s.internalPort)
 	router := s.internalRouter
 	fact := s.handlerFactory
 

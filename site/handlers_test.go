@@ -6,16 +6,17 @@ import (
 
 	"github.com/Prutswonder/go-servicefoundation/model"
 	"github.com/Prutswonder/go-servicefoundation/site"
+	. "github.com/Prutswonder/go-servicefoundation/testing"
 	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 func TestServiceHandlerFactoryImpl_CreateRootHandler(t *testing.T) {
-	m := &mockMiddlewareWrapper{}
-	v := &mockVersionBuilder{}
+	m := &MockMiddlewareWrapper{}
+	v := &MockVersionBuilder{}
 	exitFn := func(int) {}
-	w := &mockResponseWriter{}
+	w := &MockResponseWriter{}
 	sut := site.CreateServiceHandlerFactory(m, v, exitFn)
 
 	w.On("WriteHeader", http.StatusOK).Once()
@@ -28,10 +29,10 @@ func TestServiceHandlerFactoryImpl_CreateRootHandler(t *testing.T) {
 }
 
 func TestServiceHandlerFactoryImpl_CreateReadinessHandler(t *testing.T) {
-	m := &mockMiddlewareWrapper{}
-	v := &mockVersionBuilder{}
+	m := &MockMiddlewareWrapper{}
+	v := &MockVersionBuilder{}
 	exitFn := func(int) {}
-	w := &mockResponseWriter{}
+	w := &MockResponseWriter{}
 	sut := site.CreateServiceHandlerFactory(m, v, exitFn)
 
 	w.On("JSON", http.StatusOK, mock.Anything).Once()
@@ -44,10 +45,10 @@ func TestServiceHandlerFactoryImpl_CreateReadinessHandler(t *testing.T) {
 }
 
 func TestServiceHandlerFactoryImpl_CreateLivenessHandler(t *testing.T) {
-	m := &mockMiddlewareWrapper{}
-	v := &mockVersionBuilder{}
+	m := &MockMiddlewareWrapper{}
+	v := &MockVersionBuilder{}
 	exitFn := func(int) {}
-	w := &mockResponseWriter{}
+	w := &MockResponseWriter{}
 	sut := site.CreateServiceHandlerFactory(m, v, exitFn)
 
 	w.On("JSON", http.StatusOK, mock.Anything).Once()
@@ -60,10 +61,10 @@ func TestServiceHandlerFactoryImpl_CreateLivenessHandler(t *testing.T) {
 }
 
 func TestServiceHandlerFactoryImpl_CreateHealthHandler(t *testing.T) {
-	m := &mockMiddlewareWrapper{}
-	v := &mockVersionBuilder{}
+	m := &MockMiddlewareWrapper{}
+	v := &MockVersionBuilder{}
 	exitFn := func(int) {}
-	w := &mockResponseWriter{}
+	w := &MockResponseWriter{}
 	sut := site.CreateServiceHandlerFactory(m, v, exitFn)
 
 	w.On("JSON", http.StatusOK, mock.Anything).Once()
@@ -76,10 +77,10 @@ func TestServiceHandlerFactoryImpl_CreateHealthHandler(t *testing.T) {
 }
 
 func TestServiceHandlerFactoryImpl_CreateVersionHandler(t *testing.T) {
-	m := &mockMiddlewareWrapper{}
-	v := &mockVersionBuilder{}
+	m := &MockMiddlewareWrapper{}
+	v := &MockVersionBuilder{}
 	exitFn := func(int) {}
-	w := &mockResponseWriter{}
+	w := &MockResponseWriter{}
 	version := make(map[string]string)
 	sut := site.CreateServiceHandlerFactory(m, v, exitFn)
 
@@ -95,11 +96,11 @@ func TestServiceHandlerFactoryImpl_CreateVersionHandler(t *testing.T) {
 }
 
 func TestServiceHandlerFactoryImpl_CreateMetricsHandler(t *testing.T) {
-	m := &mockMiddlewareWrapper{}
-	v := &mockVersionBuilder{}
+	m := &MockMiddlewareWrapper{}
+	v := &MockVersionBuilder{}
 	exitFn := func(int) {}
-	w := &mockResponseWriter{}
-	rdr := &mockReader{}
+	w := &MockResponseWriter{}
+	rdr := &MockReader{}
 	r, _ := http.NewRequest("GET", "https://www.site.com/some/url", rdr)
 	sut := site.CreateServiceHandlerFactory(m, v, exitFn)
 
@@ -116,13 +117,13 @@ func TestServiceHandlerFactoryImpl_CreateMetricsHandler(t *testing.T) {
 }
 
 func TestServiceHandlerFactoryImpl_CreateQuitHandler(t *testing.T) {
-	m := &mockMiddlewareWrapper{}
-	v := &mockVersionBuilder{}
+	m := &MockMiddlewareWrapper{}
+	v := &MockVersionBuilder{}
 	called := false
 	exitFn := func(int) {
 		called = true
 	}
-	w := &mockResponseWriter{}
+	w := &MockResponseWriter{}
 	sut := site.CreateServiceHandlerFactory(m, v, exitFn)
 
 	w.On("WriteHeader", http.StatusOK).Once()
@@ -139,12 +140,12 @@ func TestServiceHandlerFactoryImpl_CreateQuitHandler(t *testing.T) {
 func TestServiceHandlerFactoryImpl_WrapHandler(t *testing.T) {
 	const subSystem = "my-sub"
 	const name = "my-name"
-	m := &mockMiddlewareWrapper{}
-	v := &mockVersionBuilder{}
+	m := &MockMiddlewareWrapper{}
+	v := &MockVersionBuilder{}
 	exitFn := func(int) {}
-	rdr := &mockReader{}
+	rdr := &MockReader{}
 	r, _ := http.NewRequest("GET", "https://www.site.com/some/url", rdr)
-	w := &mockResponseWriter{}
+	w := &MockResponseWriter{}
 	called := false
 	handle := func(model.WrappedResponseWriter, *http.Request, model.RouterParams) {
 		called = true
