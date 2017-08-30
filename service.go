@@ -167,7 +167,7 @@ func (s *serviceImpl) Run(ctx context.Context) {
 
 	s.runReadinessServer()
 	s.runInternalServer()
-	s.runPublicServer() // blocks code execution
+	s.runPublicServer()
 
 	<-done // Wait for our shutdown
 
@@ -229,9 +229,9 @@ func (s *serviceImpl) runReadinessServer() {
 	router := s.readinessRouter
 	fact := s.handlerFactory
 
-	s.addRoute(router, subsystem, "root", []string{"/"}, MethodsForGet, []Middleware{Histogram}, fact.CreateRootHandler())
-	s.addRoute(router, subsystem, "liveness", []string{"/service/liveness"}, MethodsForGet, []Middleware{Counter, NoCaching}, fact.CreateLivenessHandler())
-	s.addRoute(router, subsystem, "readiness", []string{"/service/readiness"}, MethodsForGet, []Middleware{Histogram, NoCaching}, fact.CreateReadinessHandler())
+	s.addRoute(router, subsystem, "root", []string{"/"}, MethodsForGet, []Middleware{PanicTo500, Histogram}, fact.CreateRootHandler())
+	s.addRoute(router, subsystem, "liveness", []string{"/service/liveness"}, MethodsForGet, []Middleware{PanicTo500, Counter, NoCaching}, fact.CreateLivenessHandler())
+	s.addRoute(router, subsystem, "readiness", []string{"/service/readiness"}, MethodsForGet, []Middleware{PanicTo500, Histogram, NoCaching}, fact.CreateReadinessHandler())
 
 	s.log.Info("RunReadinessServer", "%s %s running on localhost:%d.", s.name, subsystem, s.readinessPort)
 
@@ -245,10 +245,10 @@ func (s *serviceImpl) runInternalServer() {
 	router := s.internalRouter
 	fact := s.handlerFactory
 
-	s.addRoute(router, subsystem, "root", []string{"/"}, MethodsForGet, []Middleware{Histogram}, fact.CreateRootHandler())
-	s.addRoute(router, subsystem, "health_check", []string{"/health_check", "/healthz"}, MethodsForGet, []Middleware{Counter, NoCaching}, fact.CreateHealthHandler())
-	s.addRoute(router, subsystem, "metrics", []string{"/metrics"}, MethodsForGet, []Middleware{Counter, NoCaching}, fact.CreateMetricsHandler())
-	s.addRoute(router, subsystem, "quit", []string{"/quit"}, MethodsForGet, []Middleware{NoCaching}, fact.CreateQuitHandler())
+	s.addRoute(router, subsystem, "root", []string{"/"}, MethodsForGet, []Middleware{PanicTo500, Histogram}, fact.CreateRootHandler())
+	s.addRoute(router, subsystem, "health_check", []string{"/health_check", "/healthz"}, MethodsForGet, []Middleware{PanicTo500, Counter, NoCaching}, fact.CreateHealthHandler())
+	s.addRoute(router, subsystem, "metrics", []string{"/metrics"}, MethodsForGet, []Middleware{PanicTo500, Counter, NoCaching}, fact.CreateMetricsHandler())
+	s.addRoute(router, subsystem, "quit", []string{"/quit"}, MethodsForGet, []Middleware{PanicTo500, NoCaching}, fact.CreateQuitHandler())
 
 	s.log.Info("RunInternalServer", "%s %s running on localhost:%d.", s.name, subsystem, s.internalPort)
 
@@ -260,10 +260,10 @@ func (s *serviceImpl) runPublicServer() {
 	router := s.publicRouter
 	fact := s.handlerFactory
 
-	s.addRoute(router, publicSubsystem, "root", []string{"/"}, MethodsForGet, []Middleware{Histogram}, fact.CreateRootHandler())
-	s.addRoute(router, publicSubsystem, "version", []string{"/service/version"}, MethodsForGet, []Middleware{Counter}, fact.CreateLivenessHandler())
-	s.addRoute(router, publicSubsystem, "liveness", []string{"/service/liveness"}, MethodsForGet, []Middleware{Counter}, fact.CreateLivenessHandler())
-	s.addRoute(router, publicSubsystem, "readiness", []string{"/service/readiness"}, MethodsForGet, []Middleware{Histogram, NoCaching}, fact.CreateReadinessHandler())
+	s.addRoute(router, publicSubsystem, "root", []string{"/"}, MethodsForGet, []Middleware{PanicTo500, Histogram}, fact.CreateRootHandler())
+	s.addRoute(router, publicSubsystem, "version", []string{"/service/version"}, MethodsForGet, []Middleware{PanicTo500, Counter}, fact.CreateLivenessHandler())
+	s.addRoute(router, publicSubsystem, "liveness", []string{"/service/liveness"}, MethodsForGet, []Middleware{PanicTo500, Counter}, fact.CreateLivenessHandler())
+	s.addRoute(router, publicSubsystem, "readiness", []string{"/service/readiness"}, MethodsForGet, []Middleware{PanicTo500, Histogram, NoCaching}, fact.CreateReadinessHandler())
 
 	s.log.Info("RunPublicService", "%s %s running on localhost:%d.", s.name, publicSubsystem, s.port)
 

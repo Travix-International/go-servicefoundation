@@ -47,6 +47,8 @@ func (m *middlewareWrapperImpl) Wrap(subsystem, name string, middleware Middlewa
 		return m.wrapWithCounter(subsystem, name, handler)
 	case Histogram:
 		return m.wrapWithHistogram(subsystem, name, handler)
+	case PanicTo500:
+		return m.wrapWithPanicHandler(subsystem, name, handler)
 	default:
 		m.logger.Warn("UnhandledMiddleware", "Unhandled middleware: %v", middleware)
 	}
@@ -55,12 +57,6 @@ func (m *middlewareWrapperImpl) Wrap(subsystem, name string, middleware Middlewa
 
 func (m *middlewareWrapperImpl) wrapWithCounter(subsystem, name string, handler Handle) Handle {
 	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
-		defer func() {
-			if rec := recover(); rec != nil {
-				m.logger.Error("CounterPanic", "PANIC recovered: %v", rec)
-			}
-		}()
-
 		counterName := fmt.Sprintf(counterNameTemplate, strings.ToLower(r.Method), strings.ToLower(name))
 		counterHelp := fmt.Sprintf(counterHelpTemplate, r.Method, name)
 
@@ -74,21 +70,15 @@ func (m *middlewareWrapperImpl) wrapWithCounter(subsystem, name string, handler 
 
 func (m *middlewareWrapperImpl) wrapWithHistogram(subsystem, name string, handler Handle) Handle {
 	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
-		defer func() {
-			if rec := recover(); rec != nil {
-				m.logger.Error("HistogramPanic", "PANIC recovered: %v", rec)
-			}
-		}()
-
 		histogramName := fmt.Sprintf(histogramNameTemplate, strings.ToLower(r.Method), strings.ToLower(name))
 		histogramHelp := fmt.Sprintf(histogramHelpTemplate, r.Method, name)
 
-		histogram := m.metrics.AddHistogram(strings.ToLower(subsystem), histogramName, histogramHelp)
+		hist := m.metrics.AddHistogram(strings.ToLower(subsystem), histogramName, histogramHelp)
 		start := time.Now()
 
 		handler(w, r, p)
 
-		histogram.RecordTimeElapsed(start)
+		hist.RecordTimeElapsed(start)
 		m.countStatus(w, r, subsystem, name)
 	}
 }
@@ -138,4 +128,17 @@ func (m *middlewareWrapperImpl) mergeCORSOptions(options *CORSOptions) *cors.Opt
 		MaxAge: options.MaxAge,
 	}
 	return &corsOptions
+}
+
+func (m *middlewareWrapperImpl) wrapWithPanicHandler(subsystem, name string, handler Handle) Handle {
+	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				m.logger.Error("PanicAutorecover", "PANIC recovered: %v", rec)
+				w.WriteHeader(http.StatusInternalServerError)
+			}
+		}()
+
+		handler(w, r, p)
+	}
 }

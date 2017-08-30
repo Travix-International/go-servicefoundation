@@ -57,17 +57,9 @@ func TestMiddlewareWrapperImpl_Wrap_UnknownMiddleware_ReturnsUnwrappedHandler(t 
 	corsOptions := &model.CORSOptions{}
 	handle := func(model.WrappedResponseWriter, *http.Request, model.RouterParams) {
 	}
-	w := &MockResponseWriter{}
-	h := &MockMetricsHistogram{}
 	sut := site.CreateMiddlewareWrapper(log, m, corsOptions)
 
 	log.On("Warn", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-	w.On("Header").Return(http.Header{})
-	w.On("Status").Return(http.StatusOK)
-	h.On("RecordTimeElapsed", mock.Anything)
-	m.On("Count", subSystem, mock.Anything, mock.Anything)
-	m.On("CountLabels", subSystem, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-	m.On("AddHistogram", subSystem, mock.Anything, mock.Anything).Return(h)
 
 	// Act
 	actual := sut.Wrap(subSystem, name, 0, handle)
@@ -77,7 +69,7 @@ func TestMiddlewareWrapperImpl_Wrap_UnknownMiddleware_ReturnsUnwrappedHandler(t 
 }
 
 func TestMiddlewareWrapperImpl_Wrap_PanicsAreHandled(t *testing.T) {
-	scenarios := []model.Middleware{model.Counter, model.Histogram}
+	scenarios := []model.Middleware{model.PanicTo500}
 
 	for i, scenario := range scenarios {
 		const subSystem = "my-sub"
@@ -91,17 +83,11 @@ func TestMiddlewareWrapperImpl_Wrap_PanicsAreHandled(t *testing.T) {
 		rdr := &MockReader{}
 		r, _ := http.NewRequest("GET", "https://www.site.com/some/url", rdr)
 		w := &MockResponseWriter{}
-		h := &MockMetricsHistogram{}
 		p := model.RouterParams{}
 		sut := site.CreateMiddlewareWrapper(log, m, corsOptions)
 
 		log.On("Error", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-		w.On("Header").Return(http.Header{})
-		w.On("Status").Return(http.StatusOK)
-		h.On("RecordTimeElapsed", mock.Anything)
-		m.On("Count", subSystem, mock.Anything, mock.Anything)
-		m.On("CountLabels", subSystem, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-		m.On("AddHistogram", subSystem, mock.Anything, mock.Anything).Return(h)
+		w.On("WriteHeader", http.StatusInternalServerError).Once()
 
 		// Act
 		actual := sut.Wrap(subSystem, name, scenario, handle)
@@ -111,5 +97,6 @@ func TestMiddlewareWrapperImpl_Wrap_PanicsAreHandled(t *testing.T) {
 
 		actual(w, r, p)
 		log.AssertExpectations(t)
+		w.AssertExpectations(t)
 	}
 }
