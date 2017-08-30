@@ -1,6 +1,7 @@
 package servicefoundation
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -128,35 +129,45 @@ func createExitFunc(log Logger, shutdownFunc ShutdownFunc) func(int) {
 
 /* Service implementation */
 
-func (s *serviceImpl) Run() {
+func (s *serviceImpl) Run(ctx context.Context) {
 	s.log.Info("Service", "%s: %s", s.name, s.versionBuilder.ToString())
-	s.runReadinessServer()
-	s.runInternalServer()
-	s.runPublicServer() // blocks code execution
-
-	go func() {
-		<-s.receiveChan
-		if !s.quitting {
-			// One of the servers has shut down unexpectedly. Mark this service as "unhealthy".
-		}
-	}()
 
 	sigs := make(chan os.Signal, 1)
 	done := make(chan bool, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
-		<-sigs
-		s.log.Debug("GracefulShutdown", "Handling Sigterm/SigInt")
+		select {
+		case <-s.receiveChan:
+			s.log.Debug("UnexpectedShutdownReceived", "Server shut down unexpectedly")
+			// One of the servers has shut down unexpectedly. Because this makes the whole service unreliable, shutdown.
+			break
+		case <-ctx.Done():
+			s.log.Debug("ServiceCancel", "Cancellation request received")
 
-		// Shutdown anny running http servers
-		s.quitting = true
-		s.sendChan <- true
+			// Shutdown any running http servers
+			s.quitting = true
+			s.sendChan <- true
+			break
+		case <-sigs:
+			s.log.Debug("GracefulShutdown", "Handling Sigterm/SigInt")
+			break
+		}
+
+		if !s.quitting {
+			// Some other go-routine is already taking care of the shutdown
+			s.quitting = true
+			s.sendChan <- true
+		}
 
 		// Trigger graceful shutdown
 		s.exitFunc(0)
 		done <- true
 	}()
+
+	s.runReadinessServer()
+	s.runInternalServer()
+	s.runPublicServer() // blocks code execution
 
 	<-done // Wait for our shutdown
 

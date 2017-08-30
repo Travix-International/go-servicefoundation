@@ -1,6 +1,9 @@
 package model
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 type (
 	ShutdownFunc func(log Logger)
@@ -20,7 +23,7 @@ type (
 	}
 
 	Service interface {
-		Run()
+		Run(ctx context.Context)
 		AddRoute(name string, routes []string, methods []string, middlewares []Middleware, handler Handle)
 	}
 )

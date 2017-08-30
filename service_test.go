@@ -1,8 +1,10 @@
 package servicefoundation_test
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/Prutswonder/go-servicefoundation"
 	"github.com/Prutswonder/go-servicefoundation/model"
@@ -10,6 +12,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"golang.org/x/net/context"
 )
 
 func TestCreateDefaultService(t *testing.T) {
@@ -43,14 +46,8 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 		RouterFactory:         rf,
 		ServiceHandlerFactory: shf,
 	}
-	handle := func(model.WrappedResponseWriter, *http.Request, model.RouterParams) {
-
-	}
-	var wrappedHandle httprouter.Handle
-
-	wrappedHandle = func(http.ResponseWriter, *http.Request, httprouter.Params) {
-
-	}
+	var wrappedHandle httprouter.Handle = func(http.ResponseWriter, *http.Request, httprouter.Params) {}
+	handle := func(model.WrappedResponseWriter, *http.Request, model.RouterParams) {}
 	middlewares := []model.Middleware{model.NoCaching, model.CORS, model.Histogram}
 
 	shf.
@@ -68,4 +65,77 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 	sut.AddRoute("do", []string{"/do", "/do2"}, []string{http.MethodGet, http.MethodPost}, middlewares, handle)
 
 	shf.AssertExpectations(t)
+	rf.AssertExpectations(t)
+}
+
+func TestServiceImpl_Run(t *testing.T) {
+	log := &MockLogger{}
+	m := &MockMetrics{}
+	v := &MockVersionBuilder{}
+	rf := &MockRouterFactory{}
+	shf := &MockServiceHandlerFactory{}
+
+	publicRouter := &model.Router{
+		Router: &httprouter.Router{},
+	}
+	readinessRouter := &model.Router{
+		Router: &httprouter.Router{},
+	}
+	internalRouter := &model.Router{
+		Router: &httprouter.Router{},
+	}
+	var wrappedHandle httprouter.Handle = func(http.ResponseWriter, *http.Request, httprouter.Params) {}
+	var handle model.Handle = func(model.WrappedResponseWriter, *http.Request, model.RouterParams) {}
+	//middlewares := []model.Middleware{model.NoCaching, model.CORS, model.Histogram}
+
+	log.On("Info", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	log.On("Debug", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	v.On("ToString").Return("(version)")
+	shf.On("CreateRootHandler").Return(handle).Times(3)
+	shf.On("CreateLivenessHandler").Return(handle)
+	shf.On("CreateReadinessHandler").Return(handle)
+	shf.On("CreateHealthHandler").Return(handle).Once()
+	shf.On("CreateMetricsHandler").Return(handle).Once()
+	shf.On("CreateQuitHandler").Return(handle).Once()
+	shf.
+		On("WrapHandler", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Return(wrappedHandle)
+	rf.
+		On("CreateRouter").
+		Return(readinessRouter).
+		Once()
+	rf.
+		On("CreateRouter").
+		Return(internalRouter).
+		Once()
+	rf.
+		On("CreateRouter").
+		Return(publicRouter).
+		Once()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+
+	opt := model.ServiceOptions{
+		Logger:                log,
+		Metrics:               m,
+		Port:                  1234,
+		ReadinessPort:         1235,
+		InternalPort:          1236,
+		ShutdownFunc:          func(log model.Logger) {},
+		VersionBuilder:        v,
+		RouterFactory:         rf,
+		ServiceHandlerFactory: shf,
+		ExitFunc: func(int) {
+			fmt.Println("Exit called!")
+		},
+	}
+
+	sut := servicefoundation.CreateService("test-service", opt)
+
+	// Act
+	go sut.Run(ctx)
+
+	time.Sleep(10 * time.Millisecond)
+	shf.AssertExpectations(t)
+	rf.AssertExpectations(t)
 }
