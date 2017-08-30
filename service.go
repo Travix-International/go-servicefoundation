@@ -28,6 +28,7 @@ const (
 type (
 	serviceImpl struct {
 		name            string
+		timeout         time.Duration
 		port            int
 		readinessPort   int
 		internalPort    int
@@ -38,14 +39,22 @@ type (
 		internalRouter  *Router
 		handlerFactory  ServiceHandlerFactory
 		versionBuilder  VersionBuilder
+		shutdownFunc    ShutdownFunc
 		exitFunc        ExitFunc
+		quitting        bool
+		sendChan        chan bool
+		receiveChan     chan bool
+	}
+
+	serverInstance struct {
+		shutdownChan chan bool
 	}
 )
 
 func CreateService(name string, options ServiceOptions) Service {
-	exitFunc := createExitFunc(options.Logger, options.ShutdownFunc)
 	return &serviceImpl{
 		name:            name,
+		timeout:         options.ServerTimeout,
 		port:            options.Port,
 		readinessPort:   options.ReadinessPort,
 		internalPort:    options.InternalPort,
@@ -56,7 +65,10 @@ func CreateService(name string, options ServiceOptions) Service {
 		internalRouter:  options.RouterFactory.CreateRouter(),
 		handlerFactory:  options.ServiceHandlerFactory,
 		versionBuilder:  options.VersionBuilder,
-		exitFunc:        exitFunc,
+		shutdownFunc:    options.ShutdownFunc,
+		exitFunc:        options.ExitFunc,
+		sendChan:        make(chan bool, 1),
+		receiveChan:     make(chan bool, 1),
 	}
 }
 
@@ -74,6 +86,7 @@ func CreateDefaultService(name string, allowedMethods []string, shutdownFunc Shu
 	port := env.AsInt(envHTTPpPort, defaultHTTPPort)
 
 	opt := ServiceOptions{
+		ServerTimeout:         time.Second * 20,
 		Port:                  port,
 		ReadinessPort:         port + 1,
 		InternalPort:          port + 2,
@@ -83,6 +96,7 @@ func CreateDefaultService(name string, allowedMethods []string, shutdownFunc Shu
 		Metrics:               metrics,
 		VersionBuilder:        versionBuilder,
 		ShutdownFunc:          shutdownFunc,
+		ExitFunc:              exitFunc,
 	}
 
 	return CreateService(name, opt)
@@ -92,8 +106,10 @@ func CreateDefaultService(name string, allowedMethods []string, shutdownFunc Shu
 func createExitFunc(log Logger, shutdownFunc ShutdownFunc) func(int) {
 	return func(code int) {
 		log.Debug("ServiceExit", "Performing service exit")
-		go func(code int) {
+
+		go func() {
 			if shutdownFunc != nil {
+				log.Debug("ShutdownFunc", "Calling shutdown func")
 				shutdownFunc(log)
 			}
 
@@ -103,7 +119,10 @@ func createExitFunc(log Logger, shutdownFunc ShutdownFunc) func(int) {
 
 			log.Debug("ServiceExit", "Calling os.Exit(%v)", code)
 			os.Exit(code)
-		}(code)
+		}()
+
+		// Allow the go-routine to be spawned
+		time.Sleep(1 * time.Millisecond)
 	}
 }
 
@@ -114,6 +133,34 @@ func (s *serviceImpl) Run() {
 	s.runReadinessServer()
 	s.runInternalServer()
 	s.runPublicServer() // blocks code execution
+
+	go func() {
+		<-s.receiveChan
+		if !s.quitting {
+			// One of the servers has shut down unexpectedly. Mark this service as "unhealthy".
+		}
+	}()
+
+	sigs := make(chan os.Signal, 1)
+	done := make(chan bool, 1)
+	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-sigs
+		s.log.Debug("GracefulShutdown", "Handling Sigterm/SigInt")
+
+		// Shutdown anny running http servers
+		s.quitting = true
+		s.sendChan <- true
+
+		// Trigger graceful shutdown
+		s.exitFunc(0)
+		done <- true
+	}()
+
+	<-done // Wait for our shutdown
+
+	// since service.ExitFunc calls os.Exit(), we'll never get here
 }
 
 func (s *serviceImpl) AddRoute(name string, routes []string, methods []string, middlewares []Middleware, handler Handle) {
@@ -130,11 +177,44 @@ func (s *serviceImpl) addRoute(router *Router, subsystem, name string, routes []
 	}
 }
 
+func (s *serviceImpl) runHttpServer(port int, router *Router) {
+	addr := fmt.Sprintf(":%v", port)
+	svr := &http.Server{
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  30 * time.Second,
+		Addr:         addr,
+		Handler:      router.Router,
+	}
+
+	go func() {
+		// Blocking until the server stops.
+		svr.ListenAndServe()
+
+		// Notify the service that the server has stopped.
+		s.receiveChan <- true
+	}()
+
+	go func() {
+		// Monitor sender channel and close server on signal.
+		select {
+		case sig := <-s.sendChan:
+			// Properly close the server if possible.
+			if svr != nil {
+				svr.Close()
+				svr = nil
+			}
+			// Continue sending the message
+			s.sendChan <- sig
+			break
+		}
+	}()
+}
+
 // RunReadinessServer runs the readiness service as a go-routine
 func (s *serviceImpl) runReadinessServer() {
 	const subsystem = "readiness"
 
-	port := fmt.Sprintf(":%v", s.readinessPort)
 	router := s.readinessRouter
 	fact := s.handlerFactory
 
@@ -142,16 +222,15 @@ func (s *serviceImpl) runReadinessServer() {
 	s.addRoute(router, subsystem, "liveness", []string{"/service/liveness"}, MethodsForGet, []Middleware{Counter, NoCaching}, fact.CreateLivenessHandler())
 	s.addRoute(router, subsystem, "readiness", []string{"/service/readiness"}, MethodsForGet, []Middleware{Histogram, NoCaching}, fact.CreateReadinessHandler())
 
-	s.log.Info("RunReadinessServer", "%s %s running on localhost%s.", s.name, subsystem, port)
+	s.log.Info("RunReadinessServer", "%s %s running on localhost:%d.", s.name, subsystem, s.readinessPort)
 
-	go http.ListenAndServe(port, router.Router)
+	s.runHttpServer(s.readinessPort, router)
 }
 
 // RunInternalServer runs the internal service as a go-routine
 func (s *serviceImpl) runInternalServer() {
 	const subsystem = "internal"
 
-	port := fmt.Sprintf(":%v", s.internalPort)
 	router := s.internalRouter
 	fact := s.handlerFactory
 
@@ -160,14 +239,13 @@ func (s *serviceImpl) runInternalServer() {
 	s.addRoute(router, subsystem, "metrics", []string{"/metrics"}, MethodsForGet, []Middleware{Counter, NoCaching}, fact.CreateMetricsHandler())
 	s.addRoute(router, subsystem, "quit", []string{"/quit"}, MethodsForGet, []Middleware{NoCaching}, fact.CreateQuitHandler())
 
-	s.log.Info("RunInternalServer", "%s %s running on localhost%s.", s.name, subsystem, port)
+	s.log.Info("RunInternalServer", "%s %s running on localhost:%d.", s.name, subsystem, s.internalPort)
 
-	go http.ListenAndServe(port, router.Router)
+	s.runHttpServer(s.internalPort, router)
 }
 
 // RunPublicServer runs the public service on the current thread.
 func (s *serviceImpl) runPublicServer() {
-	port := fmt.Sprintf(":%v", s.port)
 	router := s.publicRouter
 	fact := s.handlerFactory
 
@@ -176,21 +254,7 @@ func (s *serviceImpl) runPublicServer() {
 	s.addRoute(router, publicSubsystem, "liveness", []string{"/service/liveness"}, MethodsForGet, []Middleware{Counter}, fact.CreateLivenessHandler())
 	s.addRoute(router, publicSubsystem, "readiness", []string{"/service/readiness"}, MethodsForGet, []Middleware{Histogram, NoCaching}, fact.CreateReadinessHandler())
 
-	s.log.Info("RunPublicService", "%s %s running on localhost%s.", s.name, publicSubsystem, port)
+	s.log.Info("RunPublicService", "%s %s running on localhost:%d.", s.name, publicSubsystem, s.port)
 
-	sigs := make(chan os.Signal, 1)
-	done := make(chan bool, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		<-sigs
-		s.log.Debug("GracefulShutdown", "Handling Sigterm/SigInt")
-		s.exitFunc(0)
-		done <- true
-	}()
-
-	go http.ListenAndServe(port, router.Router)
-
-	<-done // Wait for our shutdown
-
-	// since service.ExitFunc calls os.Exit(), we'll probably never get here
+	s.runHttpServer(s.port, router)
 }

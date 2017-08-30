@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 type (
 	ShutdownFunc func(log Logger)
 
@@ -13,6 +15,8 @@ type (
 		ServiceHandlerFactory ServiceHandlerFactory
 		VersionBuilder        VersionBuilder
 		ShutdownFunc          ShutdownFunc
+		ExitFunc              ExitFunc
+		ServerTimeout         time.Duration
 	}
 
 	Service interface {

@@ -6,5 +6,6 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="GOPATH &lt;travix.core.farecloud.GOTEMPLATE&gt;" level="project" />
     <orderEntry type="library" name="GOPATH &lt;go-servicefoundation&gt;" level="project" />
+    <orderEntry type="library" name="GOPATH &lt;go-servicefoundation&gt;" level="project" />
   </component>
 </module>

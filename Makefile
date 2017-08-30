@@ -11,3 +11,4 @@ cover:
 
 cover-old:
 	#go test -coverprofile=cover.tmp `go list ./... | grep -v /vendor/` && go tool cover -html=cover.tmp `go list ./... | grep -v /vendor/`
+
