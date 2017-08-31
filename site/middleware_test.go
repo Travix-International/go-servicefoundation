@@ -12,7 +12,14 @@ import (
 )
 
 func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
-	scenarios := []model.Middleware{model.CORS, model.NoCaching, model.Counter, model.Histogram}
+	scenarios := []model.Middleware{
+		model.CORS,
+		model.NoCaching,
+		model.Counter,
+		model.Histogram,
+		model.RequestLogging,
+		model.PanicTo500,
+	}
 
 	for i, scenario := range scenarios {
 		const subSystem = "my-sub"
@@ -37,6 +44,7 @@ func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
 		m.On("Count", subSystem, mock.Anything, mock.Anything)
 		m.On("CountLabels", subSystem, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 		m.On("AddHistogram", subSystem, mock.Anything, mock.Anything).Return(h)
+		log.On("Info", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		// Act
 		actual := sut.Wrap(subSystem, name, scenario, handle)

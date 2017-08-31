@@ -49,6 +49,8 @@ func (m *middlewareWrapperImpl) Wrap(subsystem, name string, middleware Middlewa
 		return m.wrapWithHistogram(subsystem, name, handler)
 	case PanicTo500:
 		return m.wrapWithPanicHandler(subsystem, name, handler)
+	case RequestLogging:
+		return m.wrapWithRequestLogging(subsystem, name, handler)
 	default:
 		m.logger.Warn("UnhandledMiddleware", "Unhandled middleware: %v", middleware)
 	}
@@ -80,6 +82,20 @@ func (m *middlewareWrapperImpl) wrapWithHistogram(subsystem, name string, handle
 
 		hist.RecordTimeElapsed(start)
 		m.countStatus(w, r, subsystem, name)
+	}
+}
+
+func (m *middlewareWrapperImpl) wrapWithRequestLogging(subsystem, name string, handler Handle) Handle {
+	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
+		log := m.logger
+
+		log.Info(fmt.Sprintf("Request%s", name), "TODO")
+
+		start := time.Now()
+
+		handler(w, r, p)
+
+		log.Info(fmt.Sprintf("Response%s", name), "Elapsed: %d", time.Since(start).Seconds())
 	}
 }
 
