@@ -8,7 +8,15 @@ import (
 type (
 	ShutdownFunc func(log Logger)
 
+	ServiceGlobals struct {
+		AppName           string
+		ServerName        string
+		DeployEnvironment string
+		VersionNumber     string
+	}
+
 	ServiceOptions struct {
+		Globals               ServiceGlobals
 		Port                  int
 		ReadinessPort         int
 		InternalPort          int

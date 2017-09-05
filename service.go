@@ -16,9 +16,12 @@ import (
 )
 
 const (
-	envCORSOrigins  string = "CORS_ORIGINS"
-	envHTTPpPort    string = "HTTPPORT"
-	envLogMinFilter string = "LOG_MINFILTER"
+	envCORSOrigins       string = "CORS_ORIGINS"
+	envHTTPpPort         string = "HTTPPORT"
+	envLogMinFilter      string = "LOG_MINFILTER"
+	envAppName           string = "APP_NAME"
+	envServerName        string = "SERVER_NAME"
+	envDeployEnvironment string = "DEPLOY_ENVIRONMENT"
 
 	defaultHTTPPort     int    = 8080
 	defaultLogMinFilter string = "Warning"
@@ -28,7 +31,7 @@ const (
 
 type (
 	serviceImpl struct {
-		name            string
+		globals         ServiceGlobals
 		timeout         time.Duration
 		port            int
 		readinessPort   int
@@ -52,9 +55,12 @@ type (
 	}
 )
 
-func CreateService(name string, options ServiceOptions) Service {
+// DefaultMiddlewares contains the default middleware wrappers for the predefined service endpoints.
+var DefaultMiddlewares = []Middleware{PanicTo500, RequestLogging, NoCaching}
+
+func CreateService(options ServiceOptions) Service {
 	return &serviceImpl{
-		name:            name,
+		globals:         options.Globals,
 		timeout:         options.ServerTimeout,
 		port:            options.Port,
 		readinessPort:   options.ReadinessPort,
@@ -75,18 +81,29 @@ func CreateService(name string, options ServiceOptions) Service {
 
 // CreateDefaultService creates and returns a Service that uses environment variables for default configuration.
 func CreateDefaultService(name string, allowedMethods []string, shutdownFunc ShutdownFunc) Service {
+	appName := env.OrDefault(name, envAppName)
+	serverName := env.OrDefault(envServerName, name)
+	deployEnvironment := env.OrDefault(envDeployEnvironment, "UNKNOWN")
 	corsOptions := CORSOptions{
 		AllowedOrigins: env.ListOrDefault(envCORSOrigins, []string{"*"}),
 		AllowedMethods: allowedMethods,
 	}
 	logger := logging.CreateLogger(env.OrDefault(envLogMinFilter, defaultLogMinFilter))
 	metrics := logging.CreateMetrics(name, logger)
-	middlewareWrapper := site.CreateMiddlewareWrapper(logger, metrics, &corsOptions)
 	versionBuilder := site.CreateDefaultVersionBuilder()
+	version := site.CreateBuildVersion()
+	globals := ServiceGlobals{
+		AppName:           appName,
+		ServerName:        serverName,
+		DeployEnvironment: deployEnvironment,
+		VersionNumber:     version.VersionNumber,
+	}
+	middlewareWrapper := site.CreateMiddlewareWrapper(logger, metrics, &corsOptions, globals)
 	exitFunc := createExitFunc(logger, shutdownFunc)
 	port := env.AsInt(envHTTPpPort, defaultHTTPPort)
 
 	opt := ServiceOptions{
+		Globals:               globals,
 		ServerTimeout:         time.Second * 20,
 		Port:                  port,
 		ReadinessPort:         port + 1,
@@ -100,7 +117,7 @@ func CreateDefaultService(name string, allowedMethods []string, shutdownFunc Shu
 		ExitFunc:              exitFunc,
 	}
 
-	return CreateService(name, opt)
+	return CreateService(opt)
 }
 
 // overwrite the default os.exit() to run delayed, giving the quit handler a chance to return a status
@@ -130,7 +147,7 @@ func createExitFunc(log Logger, shutdownFunc ShutdownFunc) func(int) {
 /* Service implementation */
 
 func (s *serviceImpl) Run(ctx context.Context) {
-	s.log.Info("Service", "%s: %s", s.name, s.versionBuilder.ToString())
+	s.log.Info("Service", "%s: %s", s.globals.AppName, s.versionBuilder.ToString())
 
 	sigs := make(chan os.Signal, 1)
 	done := make(chan bool, 1)
@@ -229,11 +246,11 @@ func (s *serviceImpl) runReadinessServer() {
 	router := s.readinessRouter
 	fact := s.handlerFactory
 
-	s.addRoute(router, subsystem, "root", []string{"/"}, MethodsForGet, []Middleware{PanicTo500, Histogram}, fact.CreateRootHandler())
-	s.addRoute(router, subsystem, "liveness", []string{"/service/liveness"}, MethodsForGet, []Middleware{PanicTo500, Counter, NoCaching}, fact.CreateLivenessHandler())
-	s.addRoute(router, subsystem, "readiness", []string{"/service/readiness"}, MethodsForGet, []Middleware{PanicTo500, Histogram, NoCaching}, fact.CreateReadinessHandler())
+	s.addRoute(router, subsystem, "root", []string{"/"}, MethodsForGet, DefaultMiddlewares, fact.CreateRootHandler())
+	s.addRoute(router, subsystem, "liveness", []string{"/service/liveness"}, MethodsForGet, DefaultMiddlewares, fact.CreateLivenessHandler())
+	s.addRoute(router, subsystem, "readiness", []string{"/service/readiness"}, MethodsForGet, DefaultMiddlewares, fact.CreateReadinessHandler())
 
-	s.log.Info("RunReadinessServer", "%s %s running on localhost:%d.", s.name, subsystem, s.readinessPort)
+	s.log.Info("RunReadinessServer", "%s %s running on localhost:%d.", s.globals.AppName, subsystem, s.readinessPort)
 
 	s.runHttpServer(s.readinessPort, router)
 }
@@ -245,12 +262,12 @@ func (s *serviceImpl) runInternalServer() {
 	router := s.internalRouter
 	fact := s.handlerFactory
 
-	s.addRoute(router, subsystem, "root", []string{"/"}, MethodsForGet, []Middleware{PanicTo500, Histogram}, fact.CreateRootHandler())
-	s.addRoute(router, subsystem, "health_check", []string{"/health_check", "/healthz"}, MethodsForGet, []Middleware{PanicTo500, Counter, NoCaching}, fact.CreateHealthHandler())
-	s.addRoute(router, subsystem, "metrics", []string{"/metrics"}, MethodsForGet, []Middleware{PanicTo500, Counter, NoCaching}, fact.CreateMetricsHandler())
-	s.addRoute(router, subsystem, "quit", []string{"/quit"}, MethodsForGet, []Middleware{PanicTo500, NoCaching}, fact.CreateQuitHandler())
+	s.addRoute(router, subsystem, "root", []string{"/"}, MethodsForGet, DefaultMiddlewares, fact.CreateRootHandler())
+	s.addRoute(router, subsystem, "health_check", []string{"/health_check", "/healthz"}, MethodsForGet, DefaultMiddlewares, fact.CreateHealthHandler())
+	s.addRoute(router, subsystem, "metrics", []string{"/metrics"}, MethodsForGet, DefaultMiddlewares, fact.CreateMetricsHandler())
+	s.addRoute(router, subsystem, "quit", []string{"/quit"}, MethodsForGet, DefaultMiddlewares, fact.CreateQuitHandler())
 
-	s.log.Info("RunInternalServer", "%s %s running on localhost:%d.", s.name, subsystem, s.internalPort)
+	s.log.Info("RunInternalServer", "%s %s running on localhost:%d.", s.globals.AppName, subsystem, s.internalPort)
 
 	s.runHttpServer(s.internalPort, router)
 }
@@ -260,12 +277,12 @@ func (s *serviceImpl) runPublicServer() {
 	router := s.publicRouter
 	fact := s.handlerFactory
 
-	s.addRoute(router, publicSubsystem, "root", []string{"/"}, MethodsForGet, []Middleware{PanicTo500, Histogram}, fact.CreateRootHandler())
-	s.addRoute(router, publicSubsystem, "version", []string{"/service/version"}, MethodsForGet, []Middleware{PanicTo500, Counter}, fact.CreateLivenessHandler())
-	s.addRoute(router, publicSubsystem, "liveness", []string{"/service/liveness"}, MethodsForGet, []Middleware{PanicTo500, Counter}, fact.CreateLivenessHandler())
-	s.addRoute(router, publicSubsystem, "readiness", []string{"/service/readiness"}, MethodsForGet, []Middleware{PanicTo500, Histogram, NoCaching}, fact.CreateReadinessHandler())
+	s.addRoute(router, publicSubsystem, "root", []string{"/"}, MethodsForGet, DefaultMiddlewares, fact.CreateRootHandler())
+	s.addRoute(router, publicSubsystem, "version", []string{"/service/version"}, MethodsForGet, DefaultMiddlewares, fact.CreateVersionHandler())
+	s.addRoute(router, publicSubsystem, "liveness", []string{"/service/liveness"}, MethodsForGet, DefaultMiddlewares, fact.CreateLivenessHandler())
+	s.addRoute(router, publicSubsystem, "readiness", []string{"/service/readiness"}, MethodsForGet, DefaultMiddlewares, fact.CreateReadinessHandler())
 
-	s.log.Info("RunPublicService", "%s %s running on localhost:%d.", s.name, publicSubsystem, s.port)
+	s.log.Info("RunPublicService", "%s %s running on localhost:%d.", s.globals.AppName, publicSubsystem, s.port)
 
 	s.runHttpServer(s.port, router)
 }

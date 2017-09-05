@@ -36,6 +36,9 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 		Router: &httprouter.Router{},
 	}
 	opt := model.ServiceOptions{
+		Globals: model.ServiceGlobals{
+			AppName: "test-service",
+		},
 		Logger:                log,
 		Metrics:               m,
 		Port:                  1234,
@@ -48,7 +51,7 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 	}
 	var wrappedHandle httprouter.Handle = func(http.ResponseWriter, *http.Request, httprouter.Params) {}
 	handle := func(model.WrappedResponseWriter, *http.Request, model.RouterParams) {}
-	middlewares := []model.Middleware{model.NoCaching, model.CORS, model.Histogram}
+	middlewares := servicefoundation.DefaultMiddlewares
 
 	shf.
 		On("WrapHandler", "public", "do", middlewares, mock.AnythingOfType("model.Handle")).
@@ -59,7 +62,7 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 		Return(router).
 		Times(3) // public, readiness and internal
 
-	sut := servicefoundation.CreateService("test-service", opt)
+	sut := servicefoundation.CreateService(opt)
 
 	// Act
 	sut.AddRoute("do", []string{"/do", "/do2"}, []string{http.MethodGet, http.MethodPost}, middlewares, handle)
@@ -86,7 +89,6 @@ func TestServiceImpl_Run(t *testing.T) {
 	}
 	var wrappedHandle httprouter.Handle = func(http.ResponseWriter, *http.Request, httprouter.Params) {}
 	var handle model.Handle = func(model.WrappedResponseWriter, *http.Request, model.RouterParams) {}
-	//middlewares := []model.Middleware{model.NoCaching, model.CORS, model.Histogram}
 
 	log.On("Info", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	log.On("Debug", mock.Anything, mock.Anything, mock.Anything).Return(nil)
@@ -97,6 +99,7 @@ func TestServiceImpl_Run(t *testing.T) {
 	shf.On("CreateHealthHandler").Return(handle).Once()
 	shf.On("CreateMetricsHandler").Return(handle).Once()
 	shf.On("CreateQuitHandler").Return(handle).Once()
+	shf.On("CreateVersionHandler").Return(handle).Once()
 	shf.
 		On("WrapHandler", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Return(wrappedHandle)
@@ -116,6 +119,9 @@ func TestServiceImpl_Run(t *testing.T) {
 	defer cancel()
 
 	opt := model.ServiceOptions{
+		Globals: model.ServiceGlobals{
+			AppName: "test-service",
+		},
 		Logger:                log,
 		Metrics:               m,
 		Port:                  1234,
@@ -130,7 +136,7 @@ func TestServiceImpl_Run(t *testing.T) {
 		},
 	}
 
-	sut := servicefoundation.CreateService("test-service", opt)
+	sut := servicefoundation.CreateService(opt)
 
 	// Act
 	go sut.Run(ctx)

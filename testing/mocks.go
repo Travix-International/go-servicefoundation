@@ -126,8 +126,8 @@ type (
 	}
 )
 
-func (m *MockMetricsHistogram) RecordTimeElapsed(start time.Time) {
-	m.Called(start)
+func (m *MockMetricsHistogram) RecordTimeElapsed(start time.Time, unit time.Duration) {
+	m.Called(start, unit)
 }
 
 func (m *MockMetrics) Count(subsystem, name, help string) {

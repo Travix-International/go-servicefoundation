@@ -11,25 +11,18 @@ import (
 	"github.com/rs/cors"
 )
 
-const (
-	counterNameTemplate    string = "%v_%v_requests_total"
-	counterHelpTemplate    string = "Total number of %v requests to %v."
-	histogramNameTemplate  string = "%v_%v_request_duration_milliseconds"
-	histogramHelpTemplate  string = "Response times for %v requests to %v in milliseconds."
-	statusCodeNameTemplate string = "%v_%v_response_statuscode_count"
-	statusCodeHelpTemplate string = "Status code counts for %v responses to %v of %v."
-)
-
 type middlewareWrapperImpl struct {
 	logger      Logger
 	metrics     Metrics
+	globals     ServiceGlobals
 	corsOptions *cors.Options
 }
 
-func CreateMiddlewareWrapper(logger Logger, metrics Metrics, corsOptions *CORSOptions) MiddlewareWrapper {
+func CreateMiddlewareWrapper(logger Logger, metrics Metrics, corsOptions *CORSOptions, globals ServiceGlobals) MiddlewareWrapper {
 	m := &middlewareWrapperImpl{
 		logger:  logger,
 		metrics: metrics,
+		globals: globals,
 	}
 	m.corsOptions = m.mergeCORSOptions(corsOptions)
 	return m
@@ -44,7 +37,7 @@ func (m *middlewareWrapperImpl) Wrap(subsystem, name string, middleware Middlewa
 	case NoCaching:
 		return m.wrapWithNoCache(subsystem, name, handler)
 	case Counter:
-		return m.wrapWithCounter(subsystem, name, handler)
+		return m.wrapWithCounter("", name, handler)
 	case Histogram:
 		return m.wrapWithHistogram(subsystem, name, handler)
 	case PanicTo500:
@@ -59,43 +52,91 @@ func (m *middlewareWrapperImpl) Wrap(subsystem, name string, middleware Middlewa
 
 func (m *middlewareWrapperImpl) wrapWithCounter(subsystem, name string, handler Handle) Handle {
 	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
-		counterName := fmt.Sprintf(counterNameTemplate, strings.ToLower(r.Method), strings.ToLower(name))
-		counterHelp := fmt.Sprintf(counterHelpTemplate, r.Method, name)
+		lcName := strings.ToLower(name)
+		counterName := fmt.Sprintf("%v_total", lcName)
+		counterHelp := fmt.Sprintf("Totals for %v.", name)
 
-		m.metrics.Count(subsystem, counterName, counterHelp)
+		m.metrics.CountLabels("", counterName, counterHelp,
+			[]string{"app", "server", "env", "code", "method", "handler", "version", "subsystem"},
+			[]string{
+				m.globals.AppName,
+				m.globals.ServerName,
+				m.globals.DeployEnvironment,
+				strconv.Itoa(w.Status()),
+				strings.ToLower(r.Method),
+				lcName,
+				m.globals.VersionNumber,
+				subsystem,
+			},
+		)
 
 		handler(w, r, p)
-
-		m.countStatus(w, r, subsystem, name)
 	}
 }
 
 func (m *middlewareWrapperImpl) wrapWithHistogram(subsystem, name string, handler Handle) Handle {
 	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
-		histogramName := fmt.Sprintf(histogramNameTemplate, strings.ToLower(r.Method), strings.ToLower(name))
-		histogramHelp := fmt.Sprintf(histogramHelpTemplate, r.Method, name)
+		histogramName := fmt.Sprintf("%v_duration_milliseconds", strings.ToLower(name))
+		histogramHelp := fmt.Sprintf("Response times for %v in milliseconds.", name)
 
-		hist := m.metrics.AddHistogram(strings.ToLower(subsystem), histogramName, histogramHelp)
+		hist := m.metrics.AddHistogram(subsystem, histogramName, histogramHelp)
 		start := time.Now()
 
 		handler(w, r, p)
 
-		hist.RecordTimeElapsed(start)
-		m.countStatus(w, r, subsystem, name)
+		hist.RecordTimeElapsed(start, time.Second)
 	}
 }
 
 func (m *middlewareWrapperImpl) wrapWithRequestLogging(subsystem, name string, handler Handle) Handle {
 	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
+		lcName := strings.ToLower(name)
 		log := m.logger
-
-		log.Info(fmt.Sprintf("Request%s", name), "TODO")
-
 		start := time.Now()
+
+		//TODO: Log message for requests
+		//log.Info(fmt.Sprintf("Request-%s", name), "TODO")
+		m.metrics.CountLabels("", "http_requests_total", "Total requests.",
+			[]string{"app", "server", "env", "code", "method", "handler", "version", "subsystem"},
+			[]string{
+				m.globals.AppName,
+				m.globals.ServerName,
+				m.globals.DeployEnvironment,
+				strconv.Itoa(w.Status()),
+				strings.ToLower(r.Method),
+				lcName,
+				m.globals.VersionNumber,
+				subsystem,
+			},
+		)
+		histSeconds := m.metrics.AddHistogram("", "http_request_duration_seconds",
+			"Response times for requests in seconds.")
+		histMicroSeconds := m.metrics.AddHistogram("", "http_request_duration_microseconds",
+			"Response times for requests in microseconds.")
 
 		handler(w, r, p)
 
-		log.Info(fmt.Sprintf("Response%s", name), "Elapsed: %d", time.Since(start).Seconds())
+		elapsedMicroSeconds := time.Since(start).Nanoseconds() / int64(time.Microsecond)
+
+		//TODO: Histograms are always measured in seconds and Summaries in milliseconds. This should be made configurable in go-metrics:
+		histMicroSeconds.RecordTimeElapsed(start, time.Second)
+		histSeconds.RecordTimeElapsed(start, time.Microsecond)
+
+		//TODO: Log message for responses
+		log.Info(fmt.Sprintf("Response-%s", name), "Elapsed (microsec): %d", elapsedMicroSeconds)
+		m.metrics.CountLabels("", "http_responses_total", "Total responses.",
+			[]string{"app", "server", "env", "code", "method", "handler", "version", "subsystem"},
+			[]string{
+				m.globals.AppName,
+				m.globals.ServerName,
+				m.globals.DeployEnvironment,
+				strconv.Itoa(w.Status()),
+				strings.ToLower(r.Method),
+				lcName,
+				m.globals.VersionNumber,
+				subsystem,
+			},
+		)
 	}
 }
 
@@ -119,12 +160,6 @@ func (m *middlewareWrapperImpl) wrapWithCORS(subsystem, name string, handler Han
 		}
 		c.ServeHTTP(w, r, h)
 	}
-}
-func (m *middlewareWrapperImpl) countStatus(w WrappedResponseWriter, r *http.Request, subsystem, name string) {
-	statusName := fmt.Sprintf(statusCodeNameTemplate, strings.ToLower(r.Method), strings.ToLower(name))
-	statusHelp := fmt.Sprintf(statusCodeHelpTemplate, r.Method, name, subsystem)
-	m.metrics.CountLabels(strings.ToLower(subsystem), statusName, statusHelp,
-		[]string{"status", "method"}, []string{strconv.Itoa(w.Status()), r.Method})
 }
 
 func (m *middlewareWrapperImpl) mergeCORSOptions(options *CORSOptions) *cors.Options {

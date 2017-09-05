@@ -19,13 +19,15 @@ type (
 
 func CreateMetrics(namespace string, logger model.Logger) model.Metrics {
 	return &metricsImpl{
-		metrics: metrics.NewMetrics(namespace, logger.GetLogger()),
+		// We're not using the namespace in metrics, because we won't be able to write "basic" metrics.
+		metrics: metrics.NewMetrics("", logger.GetLogger()),
 	}
 }
 
 /* MetricsHistogram implementation */
 
-func (h *metricsHistogramImpl) RecordTimeElapsed(start time.Time) {
+func (h *metricsHistogramImpl) RecordTimeElapsed(start time.Time, unit time.Duration) {
+	//TODO: Add unit as parameter to the go-metrics package
 	h.histogram.RecordTimeElapsed(start)
 }
 

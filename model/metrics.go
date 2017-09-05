@@ -5,7 +5,7 @@ import (
 )
 
 type MetricsHistogram interface {
-	RecordTimeElapsed(start time.Time)
+	RecordTimeElapsed(start time.Time, unit time.Duration)
 }
 
 type Metrics interface {

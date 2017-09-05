@@ -1,5 +1,8 @@
 GITHUB_API_TOKEN := ""
 VERSION :=""
+APP_NAME := "servicefoundation"
+SERVER_NAME := "servicefoundation-1234"
+DEPLOY_ENVIRONMENT := "staging"
 
 run-tests:
 	go get -u github.com/Masterminds/glide

@@ -36,14 +36,13 @@ func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
 		w := &MockResponseWriter{}
 		h := &MockMetricsHistogram{}
 		p := model.RouterParams{}
-		sut := site.CreateMiddlewareWrapper(log, m, corsOptions)
+		sut := site.CreateMiddlewareWrapper(log, m, corsOptions, model.ServiceGlobals{})
 
 		w.On("Header").Return(http.Header{})
 		w.On("Status").Return(http.StatusOK)
-		h.On("RecordTimeElapsed", mock.Anything)
-		m.On("Count", subSystem, mock.Anything, mock.Anything)
-		m.On("CountLabels", subSystem, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-		m.On("AddHistogram", subSystem, mock.Anything, mock.Anything).Return(h)
+		h.On("RecordTimeElapsed", mock.Anything, mock.Anything)
+		m.On("CountLabels", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+		m.On("AddHistogram", mock.Anything, mock.Anything, mock.Anything).Return(h)
 		log.On("Info", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		// Act
@@ -65,7 +64,7 @@ func TestMiddlewareWrapperImpl_Wrap_UnknownMiddleware_ReturnsUnwrappedHandler(t 
 	corsOptions := &model.CORSOptions{}
 	handle := func(model.WrappedResponseWriter, *http.Request, model.RouterParams) {
 	}
-	sut := site.CreateMiddlewareWrapper(log, m, corsOptions)
+	sut := site.CreateMiddlewareWrapper(log, m, corsOptions, model.ServiceGlobals{})
 
 	log.On("Warn", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 
@@ -92,7 +91,7 @@ func TestMiddlewareWrapperImpl_Wrap_PanicsAreHandled(t *testing.T) {
 		r, _ := http.NewRequest("GET", "https://www.site.com/some/url", rdr)
 		w := &MockResponseWriter{}
 		p := model.RouterParams{}
-		sut := site.CreateMiddlewareWrapper(log, m, corsOptions)
+		sut := site.CreateMiddlewareWrapper(log, m, corsOptions, model.ServiceGlobals{})
 
 		log.On("Error", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 		w.On("WriteHeader", http.StatusInternalServerError).Once()

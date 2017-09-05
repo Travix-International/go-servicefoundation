@@ -22,7 +22,7 @@ func TestMetricsImpl(t *testing.T) {
 	sut.CountLabels("sub", "lbl", "help", []string{"a", "b", "c"}, []string{"1", "2", "3"})
 	sut.SetGauge(float64(55), "sub", "gauge", "help")
 	h := sut.AddHistogram("sub", "hist", "help")
-	h.RecordTimeElapsed(time.Now())
+	h.RecordTimeElapsed(time.Now(), time.Microsecond)
 
 	assert.NotNil(t, h)
 	log.AssertExpectations(t)
