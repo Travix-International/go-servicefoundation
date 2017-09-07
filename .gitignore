@@ -26,3 +26,4 @@ _testmain.go
 vendor/*
 !vendor/manifest
 .idea/misc.xml
+cover.tmp

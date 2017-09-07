@@ -21,7 +21,7 @@ To do:
 * Automated documentation (GoDocs?)
 * Code checks?
 
-[![Build Status](https://travis-ci.org/Prutswonder/go-servicefoundation.svg?branch=v2)](https://travis-ci.org/Prutswonder/go-servicefoundation)
+[![Build Status](https://travis-ci.org/Prutswonder/go-servicefoundation.svg?branch=v2)](https://travis-ci.org/Prutswonder/go-servicefoundation?branch=v2)
 
 [![Coverage Status](https://coveralls.io/repos/github/Prutswonder/go-servicefoundation/badge.svg?branch=v2)](https://coveralls.io/github/Prutswonder/go-servicefoundation?branch=v2)
 

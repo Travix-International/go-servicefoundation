@@ -2,7 +2,12 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="e83dbe22-077b-4b76-95e6-2195723615c7" name="Default" comment="">
+      <change type="DELETED" beforePath="$PROJECT_DIR$/.coveralls.yml" afterPath="" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.gitignore" afterPath="$PROJECT_DIR$/.gitignore" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.travis.yml" afterPath="$PROJECT_DIR$/.travis.yml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/Makefile" afterPath="$PROJECT_DIR$/Makefile" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/README.md" afterPath="$PROJECT_DIR$/README.md" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -43,7 +48,7 @@
           <provider selected="true" editor-type-id="split-provider[text-editor;markdown-preview-editor]">
             <state split_layout="SPLIT">
               <first_editor relative-caret-position="558">
-                <caret line="28" column="0" lean-forward="true" selection-start-line="28" selection-start-column="0" selection-end-line="28" selection-end-column="0" />
+                <caret line="28" column="0" lean-forward="false" selection-start-line="28" selection-start-column="0" selection-end-line="28" selection-end-column="0" />
                 <folding />
               </first_editor>
               <second_editor />
@@ -51,21 +56,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name=".travis.yml" pinned="false" current-in-tab="true">
+      <file leaf-file-name=".travis.yml" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/.travis.yml">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="180">
               <caret line="10" column="0" lean-forward="true" selection-start-line="10" selection-start-column="0" selection-end-line="10" selection-end-column="0" />
-              <folding />
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file leaf-file-name=".coveralls.yml" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/.coveralls.yml">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="36">
-              <caret line="2" column="0" lean-forward="true" selection-start-line="2" selection-start-column="0" selection-end-line="2" selection-end-column="0" />
               <folding />
             </state>
           </provider>
@@ -107,18 +102,6 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="service_test.go" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/service_test.go">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="1332">
-              <caret line="87" column="37" lean-forward="false" selection-start-line="87" selection-start-column="37" selection-end-line="87" selection-end-column="37" />
-              <folding>
-                <element signature="e#32#379#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
       <file leaf-file-name="metrics_test.go" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/logging/metrics_test.go">
           <provider selected="true" editor-type-id="text-editor">
@@ -129,11 +112,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="Makefile" pinned="false" current-in-tab="false">
+      <file leaf-file-name="Makefile" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/Makefile">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="306">
-              <caret line="17" column="0" lean-forward="true" selection-start-line="17" selection-start-column="0" selection-end-line="17" selection-end-column="0" />
+            <state relative-caret-position="360">
+              <caret line="20" column="0" lean-forward="true" selection-start-line="20" selection-start-column="0" selection-end-line="20" selection-end-column="0" />
               <folding />
             </state>
           </provider>
@@ -244,10 +227,10 @@
         <option value="$PROJECT_DIR$/site/middleware.go" />
         <option value="$PROJECT_DIR$/service.go" />
         <option value="$PROJECT_DIR$/site/middleware_test.go" />
-        <option value="$PROJECT_DIR$/Makefile" />
         <option value="$PROJECT_DIR$/.coveralls.yml" />
         <option value="$PROJECT_DIR$/README.md" />
         <option value="$PROJECT_DIR$/.travis.yml" />
+        <option value="$PROJECT_DIR$/Makefile" />
       </list>
     </option>
   </component>
@@ -567,13 +550,6 @@
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/model/logger.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="126">
-          <caret line="7" column="4" lean-forward="false" selection-start-line="7" selection-start-column="4" selection-end-line="7" selection-end-column="4" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/logging/mocks_test.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="594">
@@ -848,14 +824,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/model/service.go">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="324">
-          <caret line="21" column="33" lean-forward="false" selection-start-line="21" selection-start-column="33" selection-end-line="21" selection-end-column="33" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/service_test.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="1332">
@@ -904,14 +872,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/Makefile">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="306">
-          <caret line="17" column="0" lean-forward="true" selection-start-line="17" selection-start-column="0" selection-end-line="17" selection-end-column="0" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/service.go">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="882">
@@ -926,17 +886,33 @@
       <provider selected="true" editor-type-id="split-provider[text-editor;markdown-preview-editor]">
         <state split_layout="SPLIT">
           <first_editor relative-caret-position="558">
-            <caret line="28" column="0" lean-forward="true" selection-start-line="28" selection-start-column="0" selection-end-line="28" selection-end-column="0" />
+            <caret line="28" column="0" lean-forward="false" selection-start-line="28" selection-start-column="0" selection-end-line="28" selection-end-column="0" />
             <folding />
           </first_editor>
           <second_editor />
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/model/service.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="324">
+          <caret line="21" column="33" lean-forward="false" selection-start-line="21" selection-start-column="33" selection-end-line="21" selection-end-column="33" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cover.tmp">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="0">
+          <caret line="0" column="0" lean-forward="false" selection-start-line="0" selection-start-column="0" selection-end-line="0" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/.coveralls.yml">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="36">
-          <caret line="2" column="0" lean-forward="true" selection-start-line="2" selection-start-column="0" selection-end-line="2" selection-end-column="0" />
+          <caret line="2" column="0" lean-forward="false" selection-start-line="2" selection-start-column="0" selection-end-line="2" selection-end-column="0" />
           <folding />
         </state>
       </provider>
@@ -945,6 +921,14 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="180">
           <caret line="10" column="0" lean-forward="true" selection-start-line="10" selection-start-column="0" selection-end-line="10" selection-end-column="0" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/Makefile">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="360">
+          <caret line="20" column="0" lean-forward="true" selection-start-line="20" selection-start-column="0" selection-end-line="20" selection-end-column="0" />
           <folding />
         </state>
       </provider>
