@@ -9,6 +9,7 @@ cover-remote:
 	go get -u github.com/mattn/goveralls
 	go get -u github.com/Masterminds/glide
 	glide install
+	go test -covermode=count -coverprofile=cover.tmp
 	goveralls -service travis-ci -coverprofile cover.tmp
 
 run-tests:
