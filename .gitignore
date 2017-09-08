@@ -27,3 +27,4 @@ vendor/*
 !vendor/manifest
 .idea/misc.xml
 cover.tmp
+.idea/workspace.xml

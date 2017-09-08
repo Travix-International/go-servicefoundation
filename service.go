@@ -81,7 +81,7 @@ func CreateService(options ServiceOptions) Service {
 
 // CreateDefaultService creates and returns a Service that uses environment variables for default configuration.
 func CreateDefaultService(name string, allowedMethods []string, shutdownFunc ShutdownFunc) Service {
-	appName := env.OrDefault(name, envAppName)
+	appName := env.OrDefault(envAppName, name)
 	serverName := env.OrDefault(envServerName, name)
 	deployEnvironment := env.OrDefault(envDeployEnvironment, "UNKNOWN")
 	corsOptions := CORSOptions{
