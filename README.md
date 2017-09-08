@@ -19,7 +19,6 @@ ServiceFoundation enables you to create Web Services containing:
 * Request/response logging as middleware
 
 To do:
-- [ ] De-normalize project structure (because Go)
 - [ ] Test extensibility 
 - [ ] Standardize metrics
 - [ ] Standardize log messages
@@ -45,19 +44,18 @@ package main
 import (
 	"context"
 	"net/http"
-	"time"
 
-	"github.com/Prutswonder/go-servicefoundation"
+	sf "github.com/Prutswonder/go-servicefoundation"
 )
 
 func main() {
-	svc := servicefoundation.CreateDefaultService("HelloWorldService", []string{http.MethodGet},
-		func(log Logger) {
+	svc := sf.CreateDefaultService("HelloWorldService", []string{http.MethodGet},
+		func(log sf.Logger) {
 			log.Info("GracefulShutdown", "Handling graceful shutdown")
 		})
 
-	svc.AddRoute("helloworld", []string{"/helloworld"}, MethodsForGet, servicefoundation.DefaultMiddlewares,
-		func(w WrappedResponseWriter, _ *http.Request, _ RouterParams) {
+	svc.AddRoute("helloworld", []string{"/helloworld"}, sf.MethodsForGet, sf.DefaultMiddlewares,
+		func(w sf.WrappedResponseWriter, _ *http.Request, _ sf.RouterParams) {
 			w.JSON(http.StatusOK, "hello world!")
 		})
 
