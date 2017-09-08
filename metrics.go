@@ -7,6 +7,18 @@ import (
 )
 
 type (
+	MetricsHistogram interface {
+		RecordTimeElapsed(start time.Time, unit time.Duration)
+	}
+
+	Metrics interface {
+		Count(subsystem, name, help string)
+		SetGauge(value float64, subsystem, name, help string)
+		CountLabels(subsystem, name, help string, labels, values []string)
+		IncreaseCounter(subsystem, name, help string, increment int)
+		AddHistogram(subsystem, name, help string) MetricsHistogram
+	}
+
 	metricsHistogramImpl struct {
 		histogram *metrics.MetricsHistogram
 	}

@@ -17,6 +17,14 @@ const (
 )
 
 type (
+	Logger interface {
+		Debug(event, formatOrMsg string, a ...interface{}) error
+		Info(event, formatOrMsg string, a ...interface{}) error
+		Warn(event, formatOrMsg string, a ...interface{}) error
+		Error(event, formatOrMsg string, a ...interface{}) error
+		GetLogger() *logger.Logger
+	}
+
 	loggerImpl struct {
 		logMinLevel int
 		logger      *logger.Logger
