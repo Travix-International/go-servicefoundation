@@ -1,4 +1,4 @@
-package logging
+package servicefoundation
 
 import (
 	"fmt"
@@ -6,7 +6,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Prutswonder/go-servicefoundation/model"
 	"github.com/Travix-International/logger"
 )
 
@@ -30,7 +29,7 @@ var (
 	once            sync.Once
 )
 
-func CreateLogger(logMinFilter string) model.Logger {
+func CreateLogger(logMinFilter string) Logger {
 	once.Do(func() {
 		for i, level := range levels {
 			log := logger.New()

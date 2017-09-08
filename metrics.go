@@ -1,9 +1,8 @@
-package logging
+package servicefoundation
 
 import (
 	"time"
 
-	"github.com/Prutswonder/go-servicefoundation/model"
 	"github.com/Travix-International/go-metrics"
 )
 
@@ -17,7 +16,7 @@ type (
 	}
 )
 
-func CreateMetrics(namespace string, logger model.Logger) model.Metrics {
+func CreateMetrics(namespace string, logger Logger) Metrics {
 	return &metricsImpl{
 		// We're not using the namespace in metrics, because we won't be able to write "basic" metrics.
 		metrics: metrics.NewMetrics("", logger.GetLogger()),
@@ -49,6 +48,6 @@ func (m *metricsImpl) IncreaseCounter(subsystem, name, help string, increment in
 	m.metrics.IncreaseCounter(subsystem, name, help, increment)
 }
 
-func (m *metricsImpl) AddHistogram(subsystem, name, help string) model.MetricsHistogram {
+func (m *metricsImpl) AddHistogram(subsystem, name, help string) MetricsHistogram {
 	return &metricsHistogramImpl{m.metrics.AddHistogram(subsystem, name, help)}
 }

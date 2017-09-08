@@ -1,14 +1,14 @@
-package site_test
+package servicefoundation_test
 
 import (
 	"testing"
 
-	"github.com/Prutswonder/go-servicefoundation/site"
+	sf "github.com/Prutswonder/go-servicefoundation"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCreateRouterFactory(t *testing.T) {
-	sut := site.CreateRouterFactory()
+	sut := sf.CreateRouterFactory()
 
 	assert.NotNil(t, sut)
 

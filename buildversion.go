@@ -1,21 +1,36 @@
-package site
+package servicefoundation
 
 import (
 	"fmt"
 
 	"github.com/Prutswonder/go-servicefoundation/env"
-	. "github.com/Prutswonder/go-servicefoundation/model"
+)
+
+type (
+	// BuildVersion contains the version and build information of the application.
+	BuildVersion struct {
+		VersionNumber string `json:"version"`
+		BuildDate     string `json:"buildDate"`
+		GitHash       string `json:"gitHash"`
+	}
+
+	// VersionBuilder contains methods to output version information in string format.
+	VersionBuilder interface {
+		ToString() string
+		ToMap() map[string]string
+	}
+
+	versionBuilderImpl struct {
+		version BuildVersion
+	}
 )
 
 const (
 	unknown = "?"
 )
 
-type versionBuilderImpl struct {
-	version BuildVersion
-}
-
-func CreateBuildVersion() BuildVersion {
+// CreateDefaultBuildVersion creates and returns a new BuildVersion based on conventional environment variables.
+func CreateDefaultBuildVersion() BuildVersion {
 	return BuildVersion{
 		VersionNumber: env.OrDefault("GO_PIPELINE_LABEL", unknown),
 		BuildDate:     env.OrDefault("BUILD_DATE", unknown),
@@ -23,11 +38,13 @@ func CreateBuildVersion() BuildVersion {
 	}
 }
 
+// CreateDefaultVersionBuilder creates and returns a VersionBuilder based on conventional environment variables.
 func CreateDefaultVersionBuilder() VersionBuilder {
-	version := CreateBuildVersion()
+	version := CreateDefaultBuildVersion()
 	return CreateVersionBuilder(version)
 }
 
+// CreateVersionBuilder creates and returns a VersionBuilder for the given BuildVersion.
 func CreateVersionBuilder(version BuildVersion) VersionBuilder {
 	return &versionBuilderImpl{
 		version: version,

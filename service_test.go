@@ -7,8 +7,7 @@ import (
 	"time"
 
 	"github.com/Prutswonder/go-servicefoundation"
-	"github.com/Prutswonder/go-servicefoundation/model"
-	. "github.com/Prutswonder/go-servicefoundation/testing"
+	sf "github.com/Prutswonder/go-servicefoundation"
 	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -16,7 +15,7 @@ import (
 )
 
 func TestCreateDefaultService(t *testing.T) {
-	shutdownFn := func(log model.Logger) {
+	shutdownFn := func(log sf.Logger) {
 	}
 
 	// Act
@@ -26,17 +25,17 @@ func TestCreateDefaultService(t *testing.T) {
 }
 
 func TestServiceImpl_AddRoute(t *testing.T) {
-	log := &MockLogger{}
-	m := &MockMetrics{}
-	v := &MockVersionBuilder{}
-	rf := &MockRouterFactory{}
-	shf := &MockServiceHandlerFactory{}
+	log := &mockLogger{}
+	m := &mockMetrics{}
+	v := &mockVersionBuilder{}
+	rf := &mockRouterFactory{}
+	shf := &mockServiceHandlerFactory{}
 
-	router := &model.Router{
+	router := &sf.Router{
 		Router: &httprouter.Router{},
 	}
-	opt := model.ServiceOptions{
-		Globals: model.ServiceGlobals{
+	opt := sf.ServiceOptions{
+		Globals: sf.ServiceGlobals{
 			AppName: "test-service",
 		},
 		Logger:                log,
@@ -44,17 +43,17 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 		Port:                  1234,
 		ReadinessPort:         1235,
 		InternalPort:          1236,
-		ShutdownFunc:          func(log model.Logger) {},
+		ShutdownFunc:          func(log sf.Logger) {},
 		VersionBuilder:        v,
 		RouterFactory:         rf,
 		ServiceHandlerFactory: shf,
 	}
 	var wrappedHandle httprouter.Handle = func(http.ResponseWriter, *http.Request, httprouter.Params) {}
-	handle := func(model.WrappedResponseWriter, *http.Request, model.RouterParams) {}
+	handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
 	middlewares := servicefoundation.DefaultMiddlewares
 
 	shf.
-		On("WrapHandler", "public", "do", middlewares, mock.AnythingOfType("model.Handle")).
+		On("WrapHandler", "public", "do", middlewares, mock.AnythingOfType("Handle")).
 		Return(wrappedHandle).
 		Twice() // for each route
 	rf.
@@ -72,23 +71,23 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 }
 
 func TestServiceImpl_Run(t *testing.T) {
-	log := &MockLogger{}
-	m := &MockMetrics{}
-	v := &MockVersionBuilder{}
-	rf := &MockRouterFactory{}
-	shf := &MockServiceHandlerFactory{}
+	log := &mockLogger{}
+	m := &mockMetrics{}
+	v := &mockVersionBuilder{}
+	rf := &mockRouterFactory{}
+	shf := &mockServiceHandlerFactory{}
 
-	publicRouter := &model.Router{
+	publicRouter := &sf.Router{
 		Router: &httprouter.Router{},
 	}
-	readinessRouter := &model.Router{
+	readinessRouter := &sf.Router{
 		Router: &httprouter.Router{},
 	}
-	internalRouter := &model.Router{
+	internalRouter := &sf.Router{
 		Router: &httprouter.Router{},
 	}
 	var wrappedHandle httprouter.Handle = func(http.ResponseWriter, *http.Request, httprouter.Params) {}
-	var handle model.Handle = func(model.WrappedResponseWriter, *http.Request, model.RouterParams) {}
+	var handle sf.Handle = func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
 
 	log.On("Info", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	log.On("Debug", mock.Anything, mock.Anything, mock.Anything).Return(nil)
@@ -118,8 +117,8 @@ func TestServiceImpl_Run(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
 
-	opt := model.ServiceOptions{
-		Globals: model.ServiceGlobals{
+	opt := sf.ServiceOptions{
+		Globals: sf.ServiceGlobals{
 			AppName: "test-service",
 		},
 		Logger:                log,
@@ -127,7 +126,7 @@ func TestServiceImpl_Run(t *testing.T) {
 		Port:                  1234,
 		ReadinessPort:         1235,
 		InternalPort:          1236,
-		ShutdownFunc:          func(log model.Logger) {},
+		ShutdownFunc:          func(log sf.Logger) {},
 		VersionBuilder:        v,
 		RouterFactory:         rf,
 		ServiceHandlerFactory: shf,

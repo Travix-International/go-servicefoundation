@@ -1,14 +1,14 @@
-package logging_test
+package servicefoundation_test
 
 import (
 	"testing"
 
-	"github.com/Prutswonder/go-servicefoundation/logging"
+	sf "github.com/Prutswonder/go-servicefoundation"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestLoggerImpl_GetLogger_DebugLevel(t *testing.T) {
-	sut := logging.CreateLogger("Debug")
+	sut := sf.CreateLogger("Debug")
 
 	// Act
 	sut.Debug("event", "msg %s %s", "arg1", "arg2")
@@ -21,7 +21,7 @@ func TestLoggerImpl_GetLogger_DebugLevel(t *testing.T) {
 }
 
 func TestLoggerImpl_GetLogger_ErrorLevel(t *testing.T) {
-	sut := logging.CreateLogger("Error")
+	sut := sf.CreateLogger("Error")
 
 	// Act
 	sut.Debug("event", "msg %s %s", "arg1", "arg2")
@@ -34,7 +34,7 @@ func TestLoggerImpl_GetLogger_ErrorLevel(t *testing.T) {
 }
 
 func TestLoggerImpl_GetLogger_UnknownLevel(t *testing.T) {
-	sut := logging.CreateLogger("Whatevah")
+	sut := sf.CreateLogger("Whatevah")
 
 	// Act
 	sut.Debug("event", "msg %s %s", "arg1", "arg2")
@@ -47,7 +47,7 @@ func TestLoggerImpl_GetLogger_UnknownLevel(t *testing.T) {
 }
 
 func TestLoggerImpl_GetLogger_StaticMsg(t *testing.T) {
-	sut := logging.CreateLogger("Debug")
+	sut := sf.CreateLogger("Debug")
 
 	// Act
 	sut.Debug("event", "msg")

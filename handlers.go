@@ -1,18 +1,32 @@
-package site
+package servicefoundation
 
 import (
 	"net/http"
 
-	. "github.com/Prutswonder/go-servicefoundation/model"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-type serviceHandlerFactoryImpl struct {
-	versionBuilder    VersionBuilder
-	exitFunc          ExitFunc
-	middlewareWrapper MiddlewareWrapper
-}
+type (
+	ExitFunc func(int)
+
+	ServiceHandlerFactory interface {
+		WrapHandler(string, string, []Middleware, Handle) httprouter.Handle
+		CreateRootHandler() Handle
+		CreateReadinessHandler() Handle
+		CreateLivenessHandler() Handle
+		CreateQuitHandler() Handle
+		CreateHealthHandler() Handle
+		CreateVersionHandler() Handle
+		CreateMetricsHandler() Handle
+	}
+
+	serviceHandlerFactoryImpl struct {
+		versionBuilder    VersionBuilder
+		exitFunc          ExitFunc
+		middlewareWrapper MiddlewareWrapper
+	}
+)
 
 func CreateServiceHandlerFactory(middlewareWrapper MiddlewareWrapper, versionBuilder VersionBuilder, exitFunc ExitFunc) ServiceHandlerFactory {
 	return &serviceHandlerFactoryImpl{
@@ -31,7 +45,7 @@ func (f *serviceHandlerFactoryImpl) WrapHandler(subsystem, name string, middlewa
 		for _, middleware := range middlewares {
 			h = f.middlewareWrapper.Wrap(subsystem, name, middleware, h)
 		}
-		h(CreateWrappedResponseWriter(w), r, RouterParams{p})
+		h(CreateWrappedResponseWriter(w), r, RouterParams{Params: p})
 	}
 }
 

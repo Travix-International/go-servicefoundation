@@ -1,4 +1,4 @@
-package site
+package servicefoundation
 
 import (
 	"encoding/json"
@@ -6,8 +6,24 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+)
 
-	"github.com/Prutswonder/go-servicefoundation/model"
+type (
+	WrappedResponseWriter interface {
+		http.ResponseWriter
+		JSON(statusCode int, content interface{})
+		XML(statusCode int, content interface{})
+		AcceptsXML(r *http.Request) bool
+		WriteResponse(r *http.Request, statusCode int, content interface{})
+		SetCaching(maxAge int)
+		Status() int
+	}
+
+	wrappedResponseWriterImpl struct {
+		http.ResponseWriter
+		status      int
+		wroteHeader bool
+	}
 )
 
 const (
@@ -17,13 +33,7 @@ const (
 	ContentTypeXML    = "application/xml"
 )
 
-type wrappedResponseWriterImpl struct {
-	http.ResponseWriter
-	status      int
-	wroteHeader bool
-}
-
-func CreateWrappedResponseWriter(w http.ResponseWriter) model.WrappedResponseWriter {
+func CreateWrappedResponseWriter(w http.ResponseWriter) WrappedResponseWriter {
 	return &wrappedResponseWriterImpl{ResponseWriter: w, status: http.StatusOK}
 }
 

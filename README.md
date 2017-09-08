@@ -48,7 +48,6 @@ import (
 	"time"
 
 	"github.com/Prutswonder/go-servicefoundation"
-	. "github.com/Prutswonder/go-servicefoundation/model"
 )
 
 func main() {
@@ -68,14 +67,17 @@ func main() {
 
 The following environment variables are used by ServiceFoundation:
 
-|Name              |Used for                                                  |
-|------------------|----------------------------------------------------------|
-|CORS_ORIGINS      |Comma-separated list of CORS origins (default:*)          |
-|HTTPPORT          |Port used for exposing the public endpoint (default: 8080)|
-|LOG_MINFILTER     |Minimum filter for log writing (default: Warning)         |
-|APP_NAME          |Name of the application (HelloWorldService)               |
-|SERVER_NAME       |Name of the server instance (helloworldservice-1234)      |
-|DEPLOY_ENVIRONMENT|Name of the deployment environment (default: staging)     |
+|Name              |Used for                                                  
+|------------------|----------------------------------------------------------
+|CORS_ORIGINS      |Comma-separated list of CORS origins (default:*)          
+|HTTPPORT          |Port used for exposing the public endpoint (default: 8080)
+|LOG_MINFILTER     |Minimum filter for log writing (default: Warning)         
+|APP_NAME          |Name of the application (HelloWorldService)               
+|SERVER_NAME       |Name of the server instance (helloworldservice-1234)      
+|DEPLOY_ENVIRONMENT|Name of the deployment environment (default: staging)     
+|GO_PIPELINE_LABEL |GOCD pipeline version number (default: ?)
+|BUILD_DATE        |Build date (default: ?)
+|GIT_HASH          |Git hash (default: ?)
 
 ## Dependencies
 

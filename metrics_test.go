@@ -1,12 +1,12 @@
-package logging_test
+package servicefoundation_test
 
 import (
 	"testing"
+	"time"
 
-	"github.com/Prutswonder/go-servicefoundation/logging"
+	sf "github.com/Prutswonder/go-servicefoundation"
 	"github.com/Travix-International/logger"
 	"github.com/stretchr/testify/assert"
-	"time"
 )
 
 func TestMetricsImpl(t *testing.T) {
@@ -14,7 +14,7 @@ func TestMetricsImpl(t *testing.T) {
 	log.
 		On("GetLogger").
 		Return(logger.New())
-	sut := logging.CreateMetrics("testcount", log)
+	sut := sf.CreateMetrics("testcount", log)
 
 	// Act
 	sut.Count("sub", "count", "help")

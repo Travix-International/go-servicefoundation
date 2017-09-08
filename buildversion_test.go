@@ -1,15 +1,14 @@
-package site_test
+package servicefoundation_test
 
 import (
 	"testing"
 
-	"github.com/Prutswonder/go-servicefoundation/model"
-	"github.com/Prutswonder/go-servicefoundation/site"
+	sf "github.com/Prutswonder/go-servicefoundation"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCreateDefaultVersionBuilder(t *testing.T) {
-	sut := site.CreateDefaultVersionBuilder()
+	sut := sf.CreateDefaultVersionBuilder()
 
 	actual := sut.ToString()
 	actualMap := sut.ToMap()
@@ -23,13 +22,13 @@ func TestCreateDefaultVersionBuilder(t *testing.T) {
 }
 
 func TestCreateVersionBuilder(t *testing.T) {
-	version := model.BuildVersion{
+	version := sf.BuildVersion{
 		BuildDate:     "date",
 		VersionNumber: "nmbr",
 		GitHash:       "hash",
 	}
 
-	sut := site.CreateVersionBuilder(version)
+	sut := sf.CreateVersionBuilder(version)
 
 	actual := sut.ToString()
 	actualMap := sut.ToMap()

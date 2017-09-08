@@ -10,9 +10,6 @@ import (
 	"time"
 
 	"github.com/Prutswonder/go-servicefoundation/env"
-	"github.com/Prutswonder/go-servicefoundation/logging"
-	. "github.com/Prutswonder/go-servicefoundation/model"
-	"github.com/Prutswonder/go-servicefoundation/site"
 )
 
 const (
@@ -30,6 +27,35 @@ const (
 )
 
 type (
+	ShutdownFunc func(log Logger)
+
+	ServiceGlobals struct {
+		AppName           string
+		ServerName        string
+		DeployEnvironment string
+		VersionNumber     string
+	}
+
+	ServiceOptions struct {
+		Globals               ServiceGlobals
+		Port                  int
+		ReadinessPort         int
+		InternalPort          int
+		Logger                Logger
+		Metrics               Metrics
+		RouterFactory         RouterFactory
+		ServiceHandlerFactory ServiceHandlerFactory
+		VersionBuilder        VersionBuilder
+		ShutdownFunc          ShutdownFunc
+		ExitFunc              ExitFunc
+		ServerTimeout         time.Duration
+	}
+
+	Service interface {
+		Run(ctx context.Context)
+		AddRoute(name string, routes []string, methods []string, middlewares []Middleware, handler Handle)
+	}
+
 	serviceImpl struct {
 		globals         ServiceGlobals
 		timeout         time.Duration
@@ -88,17 +114,17 @@ func CreateDefaultService(name string, allowedMethods []string, shutdownFunc Shu
 		AllowedOrigins: env.ListOrDefault(envCORSOrigins, []string{"*"}),
 		AllowedMethods: allowedMethods,
 	}
-	logger := logging.CreateLogger(env.OrDefault(envLogMinFilter, defaultLogMinFilter))
-	metrics := logging.CreateMetrics(name, logger)
-	versionBuilder := site.CreateDefaultVersionBuilder()
-	version := site.CreateBuildVersion()
+	logger := CreateLogger(env.OrDefault(envLogMinFilter, defaultLogMinFilter))
+	metrics := CreateMetrics(name, logger)
+	versionBuilder := CreateDefaultVersionBuilder()
+	version := CreateDefaultBuildVersion()
 	globals := ServiceGlobals{
 		AppName:           appName,
 		ServerName:        serverName,
 		DeployEnvironment: deployEnvironment,
 		VersionNumber:     version.VersionNumber,
 	}
-	middlewareWrapper := site.CreateMiddlewareWrapper(logger, metrics, &corsOptions, globals)
+	middlewareWrapper := CreateMiddlewareWrapper(logger, metrics, &corsOptions, globals)
 	exitFunc := createExitFunc(logger, shutdownFunc)
 	port := env.AsInt(envHTTPpPort, defaultHTTPPort)
 
@@ -108,8 +134,8 @@ func CreateDefaultService(name string, allowedMethods []string, shutdownFunc Shu
 		Port:                  port,
 		ReadinessPort:         port + 1,
 		InternalPort:          port + 2,
-		ServiceHandlerFactory: site.CreateServiceHandlerFactory(middlewareWrapper, versionBuilder, exitFunc),
-		RouterFactory:         site.CreateRouterFactory(),
+		ServiceHandlerFactory: CreateServiceHandlerFactory(middlewareWrapper, versionBuilder, exitFunc),
+		RouterFactory:         CreateRouterFactory(),
 		Logger:                logger,
 		Metrics:               metrics,
 		VersionBuilder:        versionBuilder,

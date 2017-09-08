@@ -1,4 +1,4 @@
-package model
+package servicefoundation
 
 import (
 	"net/http"
@@ -20,9 +20,22 @@ type (
 	RouterFactory interface {
 		CreateRouter() *Router
 	}
+
+	routerFactoryImpl struct {
+	}
 )
 
 var (
 	MethodsForGet  = []string{http.MethodGet}
 	MethodsForPost = []string{http.MethodPost}
 )
+
+func CreateRouterFactory() RouterFactory {
+	return &routerFactoryImpl{}
+}
+
+/* RouterFactory implementation */
+
+func (r *routerFactoryImpl) CreateRouter() *Router {
+	return &Router{Router: httprouter.New()}
+}

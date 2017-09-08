@@ -1,42 +1,40 @@
-package site_test
+package servicefoundation_test
 
 import (
 	"net/http"
 	"testing"
 
-	"github.com/Prutswonder/go-servicefoundation/model"
-	"github.com/Prutswonder/go-servicefoundation/site"
-	. "github.com/Prutswonder/go-servicefoundation/testing"
+	sf "github.com/Prutswonder/go-servicefoundation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
-	scenarios := []model.Middleware{
-		model.CORS,
-		model.NoCaching,
-		model.Counter,
-		model.Histogram,
-		model.RequestLogging,
-		model.PanicTo500,
+	scenarios := []sf.Middleware{
+		sf.CORS,
+		sf.NoCaching,
+		sf.Counter,
+		sf.Histogram,
+		sf.RequestLogging,
+		sf.PanicTo500,
 	}
 
 	for i, scenario := range scenarios {
 		const subSystem = "my-sub"
 		const name = "my-name"
-		log := &MockLogger{}
-		m := &MockMetrics{}
-		corsOptions := &model.CORSOptions{}
+		log := &mockLogger{}
+		m := &mockMetrics{}
+		corsOptions := &sf.CORSOptions{}
 		called := false
-		handle := func(model.WrappedResponseWriter, *http.Request, model.RouterParams) {
+		handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {
 			called = true
 		}
-		rdr := &MockReader{}
-		r, _ := http.NewRequest("GET", "https://www.site.com/some/url", rdr)
-		w := &MockResponseWriter{}
-		h := &MockMetricsHistogram{}
-		p := model.RouterParams{}
-		sut := site.CreateMiddlewareWrapper(log, m, corsOptions, model.ServiceGlobals{})
+		rdr := &mockReader{}
+		r, _ := http.NewRequest("GET", "https://www.sf.com/some/url", rdr)
+		w := &mockResponseWriter{}
+		h := &mockMetricsHistogram{}
+		p := sf.RouterParams{}
+		sut := sf.CreateMiddlewareWrapper(log, m, corsOptions, sf.ServiceGlobals{})
 
 		w.On("Header").Return(http.Header{})
 		w.On("Status").Return(http.StatusOK)
@@ -59,12 +57,12 @@ func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
 func TestMiddlewareWrapperImpl_Wrap_UnknownMiddleware_ReturnsUnwrappedHandler(t *testing.T) {
 	const subSystem = "my-sub"
 	const name = "my-name"
-	log := &MockLogger{}
-	m := &MockMetrics{}
-	corsOptions := &model.CORSOptions{}
-	handle := func(model.WrappedResponseWriter, *http.Request, model.RouterParams) {
+	log := &mockLogger{}
+	m := &mockMetrics{}
+	corsOptions := &sf.CORSOptions{}
+	handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {
 	}
-	sut := site.CreateMiddlewareWrapper(log, m, corsOptions, model.ServiceGlobals{})
+	sut := sf.CreateMiddlewareWrapper(log, m, corsOptions, sf.ServiceGlobals{})
 
 	log.On("Warn", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 
@@ -76,22 +74,22 @@ func TestMiddlewareWrapperImpl_Wrap_UnknownMiddleware_ReturnsUnwrappedHandler(t 
 }
 
 func TestMiddlewareWrapperImpl_Wrap_PanicsAreHandled(t *testing.T) {
-	scenarios := []model.Middleware{model.PanicTo500}
+	scenarios := []sf.Middleware{sf.PanicTo500}
 
 	for i, scenario := range scenarios {
 		const subSystem = "my-sub"
 		const name = "my-name"
-		log := &MockLogger{}
-		m := &MockMetrics{}
-		corsOptions := &model.CORSOptions{}
-		handle := func(model.WrappedResponseWriter, *http.Request, model.RouterParams) {
+		log := &mockLogger{}
+		m := &mockMetrics{}
+		corsOptions := &sf.CORSOptions{}
+		handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {
 			panic("whoa")
 		}
-		rdr := &MockReader{}
-		r, _ := http.NewRequest("GET", "https://www.site.com/some/url", rdr)
-		w := &MockResponseWriter{}
-		p := model.RouterParams{}
-		sut := site.CreateMiddlewareWrapper(log, m, corsOptions, model.ServiceGlobals{})
+		rdr := &mockReader{}
+		r, _ := http.NewRequest("GET", "https://www.sf.com/some/url", rdr)
+		w := &mockResponseWriter{}
+		p := sf.RouterParams{}
+		sut := sf.CreateMiddlewareWrapper(log, m, corsOptions, sf.ServiceGlobals{})
 
 		log.On("Error", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 		w.On("WriteHeader", http.StatusInternalServerError).Once()

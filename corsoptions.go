@@ -1,5 +1,6 @@
-package model
+package servicefoundation
 
+// CORSOptions contains properties used for handling CORS requests.
 type CORSOptions struct {
 	// AllowedOrigins is a list of origins a cross-domain request can be executed from.
 	// If the special "*" value is present in the list, all origins will be allowed.

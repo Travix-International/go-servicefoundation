@@ -1,11 +1,10 @@
-package site_test
+package servicefoundation_test
 
 import (
 	"net/http"
 	"testing"
 
-	"github.com/Prutswonder/go-servicefoundation/site"
-	. "github.com/Prutswonder/go-servicefoundation/testing"
+	sf "github.com/Prutswonder/go-servicefoundation"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -16,7 +15,7 @@ type testObj struct {
 }
 
 func TestCreateWrappedResponseWriter(t *testing.T) {
-	w := &MockResponseWriter{}
+	w := &mockResponseWriter{}
 	w.
 		On("Write", mock.Anything).
 		Return(0, nil).
@@ -24,7 +23,7 @@ func TestCreateWrappedResponseWriter(t *testing.T) {
 	w.
 		On("WriteHeader", mock.AnythingOfType("int")).
 		Twice()
-	sut := site.CreateWrappedResponseWriter(w)
+	sut := sf.CreateWrappedResponseWriter(w)
 
 	// Act
 	sut.Write([]byte("okay"))
@@ -37,7 +36,7 @@ func TestCreateWrappedResponseWriter(t *testing.T) {
 
 func TestWrappedResponseWriterImpl_JSON(t *testing.T) {
 	const status = http.StatusGatewayTimeout
-	w := &MockResponseWriter{}
+	w := &mockResponseWriter{}
 	w.
 		On("Header").
 		Return(http.Header{}).
@@ -50,7 +49,7 @@ func TestWrappedResponseWriterImpl_JSON(t *testing.T) {
 		On("WriteHeader", mock.AnythingOfType("int")).
 		Once()
 	obj := testObj{"Fifi", 22}
-	sut := site.CreateWrappedResponseWriter(w)
+	sut := sf.CreateWrappedResponseWriter(w)
 
 	sut.JSON(status, obj)
 
@@ -60,7 +59,7 @@ func TestWrappedResponseWriterImpl_JSON(t *testing.T) {
 
 func TestWrappedResponseWriterImpl_XML(t *testing.T) {
 	const status = http.StatusAlreadyReported
-	w := &MockResponseWriter{}
+	w := &mockResponseWriter{}
 	w.
 		On("Header").
 		Return(http.Header{}).
@@ -73,7 +72,7 @@ func TestWrappedResponseWriterImpl_XML(t *testing.T) {
 		On("WriteHeader", mock.AnythingOfType("int")).
 		Once()
 	obj := testObj{"Yoyo", 33}
-	sut := site.CreateWrappedResponseWriter(w)
+	sut := sf.CreateWrappedResponseWriter(w)
 
 	sut.XML(status, obj)
 
@@ -85,16 +84,16 @@ func TestWrappedResponseWriterImpl_AcceptsXML(t *testing.T) {
 }
 
 func TestWrappedResponseWriterImpl_AcceptsJSON(t *testing.T) {
-	rdr := &MockReader{}
+	rdr := &mockReader{}
 	rdr.On("Read", mock.Anything).
 		Return(0).
 		Once()
 
 	r, _ := http.NewRequest("GET", "https://www.site.com/some/url", rdr)
-	r.Header.Add(site.AcceptHeader, site.ContentTypeJSON)
+	r.Header.Add(sf.AcceptHeader, sf.ContentTypeJSON)
 
-	w := &MockResponseWriter{}
-	sut := site.CreateWrappedResponseWriter(w)
+	w := &mockResponseWriter{}
+	sut := sf.CreateWrappedResponseWriter(w)
 
 	actual := sut.AcceptsXML(r)
 
@@ -104,16 +103,16 @@ func TestWrappedResponseWriterImpl_AcceptsJSON(t *testing.T) {
 
 func TestWrappedResponseWriterImpl_WriteResponse_AsXML(t *testing.T) {
 	const status = http.StatusAlreadyReported
-	rdr := &MockReader{}
+	rdr := &mockReader{}
 	rdr.On("Read", mock.Anything).
 		Return(0).
 		Once()
 	h := make(http.Header)
 
 	r, _ := http.NewRequest("GET", "https://www.site.com/some/url", rdr)
-	r.Header.Add(site.AcceptHeader, site.ContentTypeXML)
+	r.Header.Add(sf.AcceptHeader, sf.ContentTypeXML)
 
-	w := &MockResponseWriter{}
+	w := &mockResponseWriter{}
 	w.
 		On("Header").
 		Return(h).
@@ -125,28 +124,28 @@ func TestWrappedResponseWriterImpl_WriteResponse_AsXML(t *testing.T) {
 	w.
 		On("WriteHeader", mock.AnythingOfType("int")).
 		Once()
-	sut := site.CreateWrappedResponseWriter(w)
+	sut := sf.CreateWrappedResponseWriter(w)
 	obj := testObj{"Gaga", 44}
 
 	sut.WriteResponse(r, status, obj)
 
 	assert.Equal(t, status, sut.Status())
-	assert.Equal(t, site.ContentTypeXML, h.Get(site.ContentTypeHeader))
+	assert.Equal(t, sf.ContentTypeXML, h.Get(sf.ContentTypeHeader))
 	w.AssertExpectations(t)
 }
 
 func TestWrappedResponseWriterImpl_WriteResponse_AsJSON(t *testing.T) {
 	const status = http.StatusContinue
-	rdr := &MockReader{}
+	rdr := &mockReader{}
 	rdr.On("Read", mock.Anything).
 		Return(0).
 		Once()
 	h := make(http.Header)
 
 	r, _ := http.NewRequest("GET", "https://www.site.com/some/url", rdr)
-	r.Header.Add(site.AcceptHeader, site.ContentTypeJSON)
+	r.Header.Add(sf.AcceptHeader, sf.ContentTypeJSON)
 
-	w := &MockResponseWriter{}
+	w := &mockResponseWriter{}
 	w.
 		On("Header").
 		Return(h).
@@ -158,24 +157,24 @@ func TestWrappedResponseWriterImpl_WriteResponse_AsJSON(t *testing.T) {
 	w.
 		On("WriteHeader", mock.AnythingOfType("int")).
 		Once()
-	sut := site.CreateWrappedResponseWriter(w)
+	sut := sf.CreateWrappedResponseWriter(w)
 	obj := testObj{"Mumu", 55}
 
 	sut.WriteResponse(r, status, obj)
 
 	assert.Equal(t, status, sut.Status())
-	assert.Equal(t, site.ContentTypeJSON, h.Get(site.ContentTypeHeader))
+	assert.Equal(t, sf.ContentTypeJSON, h.Get(sf.ContentTypeHeader))
 	w.AssertExpectations(t)
 }
 
 func TestWrappedResponseWriterImpl_SetCaching(t *testing.T) {
 	h := make(http.Header)
-	w := &MockResponseWriter{}
+	w := &mockResponseWriter{}
 	w.
 		On("Header").
 		Return(h).
 		Twice()
-	sut := site.CreateWrappedResponseWriter(w)
+	sut := sf.CreateWrappedResponseWriter(w)
 
 	sut.SetCaching(66)
 

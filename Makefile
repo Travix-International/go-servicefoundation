@@ -6,6 +6,7 @@ SERVER_NAME := "servicefoundation-1234"
 DEPLOY_ENVIRONMENT := "staging"
 
 cover-remote:
+	go get -u github.com/golang/lint/golint
 	go get -u github.com/mattn/goveralls
 	go get -u github.com/Masterminds/glide
 	glide install
@@ -19,6 +20,12 @@ run-tests:
 
 cover:
 	go test -cover `go list ./... | grep -v /vendor/`
+
+lint:
+	golint `go list ./... | grep -v /vendor/`
+
+vet:
+	go vet `go list ./... | grep -v /vendor/`
 
 cover-old:
 	#go test -coverprofile=cover.tmp `go list ./... | grep -v /vendor/` && go tool cover -html=cover.tmp `go list ./... | grep -v /vendor/`
