@@ -163,3 +163,16 @@ func TestServiceImpl_Run(t *testing.T) {
 	shf.AssertExpectations(t)
 	rf.AssertExpectations(t)
 }
+
+func TestNewExitFunc(t *testing.T) {
+	log := &mockLogger{}
+	shutdownFn := func(log sf.Logger) {}
+
+	log.On("Debug", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+	// Act
+	sut := sf.NewExitFunc(log, shutdownFn)
+
+	assert.NotNil(t, sut)
+	go sut(1)
+}
