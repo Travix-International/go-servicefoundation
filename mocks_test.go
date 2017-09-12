@@ -199,42 +199,96 @@ type mockServiceHandlerFactory struct {
 	sf.ServiceHandlerFactory
 }
 
-func (m *mockServiceHandlerFactory) WrapHandler(subsystem, name string, middlewares []sf.Middleware, handle sf.Handle) httprouter.Handle {
+func (m *mockServiceHandlerFactory) Wrap(subsystem, name string, middlewares []sf.Middleware, handle sf.Handle) httprouter.Handle {
 	a := m.Called(subsystem, name, middlewares, handle)
 	return a.Get(0).(httprouter.Handle)
 }
 
-func (m *mockServiceHandlerFactory) CreateRootHandler() sf.Handle {
+func (m *mockServiceHandlerFactory) NewHandlers() *sf.Handlers {
+	a := m.Called()
+	return a.Get(0).(*sf.Handlers)
+}
+
+/* sf.RootHandler mock */
+
+type mockRootHandler struct {
+	mock.Mock
+	sf.RootHandler
+}
+
+func (m *mockRootHandler) NewRootHandler() sf.Handle {
 	a := m.Called()
 	return a.Get(0).(sf.Handle)
 }
 
-func (m *mockServiceHandlerFactory) CreateReadinessHandler() sf.Handle {
+/* sf.ReadinessHandler mock */
+
+type mockReadinessHandler struct {
+	mock.Mock
+	sf.ReadinessHandler
+}
+
+func (m *mockReadinessHandler) NewReadinessHandler() sf.Handle {
 	a := m.Called()
 	return a.Get(0).(sf.Handle)
 }
 
-func (m *mockServiceHandlerFactory) CreateLivenessHandler() sf.Handle {
+/* sf.LivenessHandler mock */
+
+type mockLivenessHandler struct {
+	mock.Mock
+	sf.LivenessHandler
+}
+
+func (m *mockLivenessHandler) NewLivenessHandler() sf.Handle {
 	a := m.Called()
 	return a.Get(0).(sf.Handle)
 }
 
-func (m *mockServiceHandlerFactory) CreateQuitHandler() sf.Handle {
+/* sf.QuitHandler mock */
+
+type mockQuitHandler struct {
+	mock.Mock
+	sf.QuitHandler
+}
+
+func (m *mockQuitHandler) NewQuitHandler() sf.Handle {
 	a := m.Called()
 	return a.Get(0).(sf.Handle)
 }
 
-func (m *mockServiceHandlerFactory) CreateHealthHandler() sf.Handle {
+/* sf.HealthHandler mock */
+
+type mockHealthHandler struct {
+	mock.Mock
+	sf.HealthHandler
+}
+
+func (m *mockHealthHandler) NewHealthHandler() sf.Handle {
 	a := m.Called()
 	return a.Get(0).(sf.Handle)
 }
 
-func (m *mockServiceHandlerFactory) CreateVersionHandler() sf.Handle {
+/* sf.RootHandler mock */
+
+type mockVersionHandler struct {
+	mock.Mock
+	sf.VersionHandler
+}
+
+func (m *mockVersionHandler) NewVersionHandler() sf.Handle {
 	a := m.Called()
 	return a.Get(0).(sf.Handle)
 }
 
-func (m *mockServiceHandlerFactory) CreateMetricsHandler() sf.Handle {
+/* sf.MetricsHandler mock */
+
+type mockMetricsHandler struct {
+	mock.Mock
+	sf.MetricsHandler
+}
+
+func (m *mockMetricsHandler) NewMetricsHandler() sf.Handle {
 	a := m.Called()
 	return a.Get(0).(sf.Handle)
 }

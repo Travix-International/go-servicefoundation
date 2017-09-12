@@ -19,12 +19,10 @@ ServiceFoundation enables you to create Web Services containing:
 * Request/response logging as middleware
 
 To do:
-- [ ] Test extensibility 
 - [ ] Standardize metrics
 - [ ] Standardize log messages
 - [ ] Extend logging with meta information
 - [ ] Support service warm-up
-- [ ] Overriding readiness 
 - [ ] De-duplicate CORS elements in slices
 - [ ] Automated documentation (GoDocs?)
 
@@ -49,7 +47,7 @@ import (
 )
 
 func main() {
-	svc := sf.CreateDefaultService("HelloWorldService", []string{http.MethodGet},
+	svc := sf.NewService("HelloWorldService", []string{http.MethodGet},
 		func(log sf.Logger) {
 			log.Info("GracefulShutdown", "Handling graceful shutdown")
 		})
@@ -92,7 +90,48 @@ on the following packages:
 ## Extending ServiceFoundation
 
 You can use the `servicefoundation.CreateService(ServiceOptions)` method for extension. The provided `ServiceOptions` 
-struct contains all the things you can extend.
+struct contains all the things you can extend. If you want to create your own `ReadinessHandler`, you can do so as 
+follows:
+
+```go
+package main
+
+import (
+	"context"
+	"net/http"
+
+	sf "github.com/Prutswonder/go-servicefoundation"
+)
+
+type CustomHandlers struct {
+}
+
+// Implementation of ReadinessHandler interface
+func (h CustomHandlers) NewReadinessHandler() sf.Handle {
+	return func(w sf.WrappedResponseWriter, _ *http.Request, _ sf.RouterParams) {
+		// Customize your readiness handler here
+		w.JSON(http.StatusOK, "ready!")
+	}
+}
+
+func main() {
+	shutdownFn := func(log sf.Logger) {
+		log.Info("GracefulShutdown", "Handling graceful shutdown")
+	}
+
+	opt := sf.NewServiceOptions("HelloWorldService", []string{http.MethodGet}, shutdownFn)
+	opt.Handlers.ReadinessHandler = &CustomHandlers{}
+
+	svc := sf.NewCustomService(opt)
+
+	svc.AddRoute("helloworld", []string{"/helloworld"}, sf.MethodsForGet, sf.DefaultMiddlewares,
+		func(w sf.WrappedResponseWriter, _ *http.Request, _ sf.RouterParams) {
+			w.JSON(http.StatusOK, "hello world!")
+		})
+
+	svc.Run(context.Background()) // blocks execution
+}
+```
 
 
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/Prutswonder/go-servicefoundation/blob/master/LICENSE)

@@ -37,18 +37,19 @@ type (
 	}
 
 	ServiceOptions struct {
-		Globals               ServiceGlobals
-		Port                  int
-		ReadinessPort         int
-		InternalPort          int
-		Logger                Logger
-		Metrics               Metrics
-		RouterFactory         RouterFactory
-		ServiceHandlerFactory ServiceHandlerFactory
-		VersionBuilder        VersionBuilder
-		ShutdownFunc          ShutdownFunc
-		ExitFunc              ExitFunc
-		ServerTimeout         time.Duration
+		Globals        ServiceGlobals
+		Port           int
+		ReadinessPort  int
+		InternalPort   int
+		Logger         Logger
+		Metrics        Metrics
+		RouterFactory  RouterFactory
+		Handlers       *Handlers
+		WrapHandler    WrapHandler
+		VersionBuilder VersionBuilder
+		ShutdownFunc   ShutdownFunc
+		ExitFunc       ExitFunc
+		ServerTimeout  time.Duration
 	}
 
 	Service interface {
@@ -67,7 +68,8 @@ type (
 		publicRouter    *Router
 		readinessRouter *Router
 		internalRouter  *Router
-		handlerFactory  ServiceHandlerFactory
+		handlers        *Handlers
+		wrapHandler     WrapHandler
 		versionBuilder  VersionBuilder
 		shutdownFunc    ShutdownFunc
 		exitFunc        ExitFunc
@@ -86,6 +88,13 @@ var DefaultMiddlewares = []Middleware{PanicTo500, RequestLogging, NoCaching}
 
 // NewService creates and returns a Service that uses environment variables for default configuration.
 func NewService(name string, allowedMethods []string, shutdownFunc ShutdownFunc) Service {
+	opt := NewServiceOptions(name, allowedMethods, shutdownFunc)
+
+	return NewCustomService(opt)
+}
+
+// NewServiceOptions creates and returns ServiceOptions that use environment variables for default configuration.
+func NewServiceOptions(name string, allowedMethods []string, shutdownFunc ShutdownFunc) ServiceOptions {
 	appName := env.OrDefault(envAppName, name)
 	serverName := env.OrDefault(envServerName, name)
 	deployEnvironment := env.OrDefault(envDeployEnvironment, "UNKNOWN")
@@ -104,25 +113,24 @@ func NewService(name string, allowedMethods []string, shutdownFunc ShutdownFunc)
 		VersionNumber:     version.VersionNumber,
 	}
 	middlewareWrapper := NewMiddlewareWrapper(logger, metrics, &corsOptions, globals)
-	exitFunc := createExitFunc(logger, shutdownFunc)
+	exitFunc := NewExitFunc(logger, shutdownFunc)
 	port := env.AsInt(envHTTPpPort, defaultHTTPPort)
+	factory := NewServiceHandlerFactory(middlewareWrapper, versionBuilder, exitFunc)
 
-	opt := ServiceOptions{
-		Globals:               globals,
-		ServerTimeout:         time.Second * 20,
-		Port:                  port,
-		ReadinessPort:         port + 1,
-		InternalPort:          port + 2,
-		ServiceHandlerFactory: NewServiceHandlerFactory(middlewareWrapper, versionBuilder, exitFunc),
-		RouterFactory:         NewRouterFactory(),
-		Logger:                logger,
-		Metrics:               metrics,
-		VersionBuilder:        versionBuilder,
-		ShutdownFunc:          shutdownFunc,
-		ExitFunc:              exitFunc,
+	return ServiceOptions{
+		Globals:        globals,
+		ServerTimeout:  time.Second * 20,
+		Port:           port,
+		ReadinessPort:  port + 1,
+		InternalPort:   port + 2,
+		Handlers:       factory.NewHandlers(),
+		WrapHandler:    factory,
+		RouterFactory:  NewRouterFactory(),
+		Logger:         logger,
+		Metrics:        metrics,
+		VersionBuilder: versionBuilder,
+		ExitFunc:       exitFunc,
 	}
-
-	return NewCustomService(opt)
 }
 
 // NewCustomService allows you to customize ServiceFoundation using your own implementations of factories.
@@ -138,9 +146,9 @@ func NewCustomService(options ServiceOptions) Service {
 		publicRouter:    options.RouterFactory.CreateRouter(),
 		readinessRouter: options.RouterFactory.CreateRouter(),
 		internalRouter:  options.RouterFactory.CreateRouter(),
-		handlerFactory:  options.ServiceHandlerFactory,
+		handlers:        options.Handlers,
+		wrapHandler:     options.WrapHandler,
 		versionBuilder:  options.VersionBuilder,
-		shutdownFunc:    options.ShutdownFunc,
 		exitFunc:        options.ExitFunc,
 		sendChan:        make(chan bool, 1),
 		receiveChan:     make(chan bool, 1),
@@ -148,7 +156,7 @@ func NewCustomService(options ServiceOptions) Service {
 }
 
 // overwrite the default os.exit() to run delayed, giving the quit handler a chance to return a status
-func createExitFunc(log Logger, shutdownFunc ShutdownFunc) func(int) {
+func NewExitFunc(log Logger, shutdownFunc ShutdownFunc) func(int) {
 	return func(code int) {
 		log.Debug("ServiceExit", "Performing service exit")
 
@@ -224,7 +232,7 @@ func (s *serviceImpl) AddRoute(name string, routes []string, methods []string, m
 
 func (s *serviceImpl) addRoute(router *Router, subsystem, name string, routes []string, methods []string, middlewares []Middleware, handler Handle) {
 	for _, path := range routes {
-		wrappedHandler := s.handlerFactory.WrapHandler(subsystem, name, middlewares, handler)
+		wrappedHandler := s.wrapHandler.Wrap(subsystem, name, middlewares, handler)
 
 		for _, method := range methods {
 			router.Router.Handle(method, path, wrappedHandler)
@@ -271,11 +279,10 @@ func (s *serviceImpl) runReadinessServer() {
 	const subsystem = "readiness"
 
 	router := s.readinessRouter
-	fact := s.handlerFactory
 
-	s.addRoute(router, subsystem, "root", []string{"/"}, MethodsForGet, DefaultMiddlewares, fact.CreateRootHandler())
-	s.addRoute(router, subsystem, "liveness", []string{"/service/liveness"}, MethodsForGet, DefaultMiddlewares, fact.CreateLivenessHandler())
-	s.addRoute(router, subsystem, "readiness", []string{"/service/readiness"}, MethodsForGet, DefaultMiddlewares, fact.CreateReadinessHandler())
+	s.addRoute(router, subsystem, "root", []string{"/"}, MethodsForGet, DefaultMiddlewares, s.handlers.RootHandler.NewRootHandler())
+	s.addRoute(router, subsystem, "liveness", []string{"/service/liveness"}, MethodsForGet, DefaultMiddlewares, s.handlers.LivenessHandler.NewLivenessHandler())
+	s.addRoute(router, subsystem, "readiness", []string{"/service/readiness"}, MethodsForGet, DefaultMiddlewares, s.handlers.ReadinessHandler.NewReadinessHandler())
 
 	s.log.Info("RunReadinessServer", "%s %s running on localhost:%d.", s.globals.AppName, subsystem, s.readinessPort)
 
@@ -287,12 +294,11 @@ func (s *serviceImpl) runInternalServer() {
 	const subsystem = "internal"
 
 	router := s.internalRouter
-	fact := s.handlerFactory
 
-	s.addRoute(router, subsystem, "root", []string{"/"}, MethodsForGet, DefaultMiddlewares, fact.CreateRootHandler())
-	s.addRoute(router, subsystem, "health_check", []string{"/health_check", "/healthz"}, MethodsForGet, DefaultMiddlewares, fact.CreateHealthHandler())
-	s.addRoute(router, subsystem, "metrics", []string{"/metrics"}, MethodsForGet, DefaultMiddlewares, fact.CreateMetricsHandler())
-	s.addRoute(router, subsystem, "quit", []string{"/quit"}, MethodsForGet, DefaultMiddlewares, fact.CreateQuitHandler())
+	s.addRoute(router, subsystem, "root", []string{"/"}, MethodsForGet, DefaultMiddlewares, s.handlers.RootHandler.NewRootHandler())
+	s.addRoute(router, subsystem, "health_check", []string{"/health_check", "/healthz"}, MethodsForGet, DefaultMiddlewares, s.handlers.HealthHandler.NewHealthHandler())
+	s.addRoute(router, subsystem, "metrics", []string{"/metrics"}, MethodsForGet, DefaultMiddlewares, s.handlers.MetricsHandler.NewMetricsHandler())
+	s.addRoute(router, subsystem, "quit", []string{"/quit"}, MethodsForGet, DefaultMiddlewares, s.handlers.QuitHandler.NewQuitHandler())
 
 	s.log.Info("RunInternalServer", "%s %s running on localhost:%d.", s.globals.AppName, subsystem, s.internalPort)
 
@@ -302,12 +308,11 @@ func (s *serviceImpl) runInternalServer() {
 // RunPublicServer runs the public service on the current thread.
 func (s *serviceImpl) runPublicServer() {
 	router := s.publicRouter
-	fact := s.handlerFactory
 
-	s.addRoute(router, publicSubsystem, "root", []string{"/"}, MethodsForGet, DefaultMiddlewares, fact.CreateRootHandler())
-	s.addRoute(router, publicSubsystem, "version", []string{"/service/version"}, MethodsForGet, DefaultMiddlewares, fact.CreateVersionHandler())
-	s.addRoute(router, publicSubsystem, "liveness", []string{"/service/liveness"}, MethodsForGet, DefaultMiddlewares, fact.CreateLivenessHandler())
-	s.addRoute(router, publicSubsystem, "readiness", []string{"/service/readiness"}, MethodsForGet, DefaultMiddlewares, fact.CreateReadinessHandler())
+	s.addRoute(router, publicSubsystem, "root", []string{"/"}, MethodsForGet, DefaultMiddlewares, s.handlers.RootHandler.NewRootHandler())
+	s.addRoute(router, publicSubsystem, "version", []string{"/service/version"}, MethodsForGet, DefaultMiddlewares, s.handlers.VersionHandler.NewVersionHandler())
+	s.addRoute(router, publicSubsystem, "liveness", []string{"/service/liveness"}, MethodsForGet, DefaultMiddlewares, s.handlers.LivenessHandler.NewLivenessHandler())
+	s.addRoute(router, publicSubsystem, "readiness", []string{"/service/readiness"}, MethodsForGet, DefaultMiddlewares, s.handlers.ReadinessHandler.NewReadinessHandler())
 
 	s.log.Info("RunPublicService", "%s %s running on localhost:%d.", s.globals.AppName, publicSubsystem, s.port)
 

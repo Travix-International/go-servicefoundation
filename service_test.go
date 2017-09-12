@@ -38,22 +38,22 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 		Globals: sf.ServiceGlobals{
 			AppName: "test-service",
 		},
-		Logger:                log,
-		Metrics:               m,
-		Port:                  1234,
-		ReadinessPort:         1235,
-		InternalPort:          1236,
-		ShutdownFunc:          func(log sf.Logger) {},
-		VersionBuilder:        v,
-		RouterFactory:         rf,
-		ServiceHandlerFactory: shf,
+		Logger:         log,
+		Metrics:        m,
+		Port:           1234,
+		ReadinessPort:  1235,
+		InternalPort:   1236,
+		ShutdownFunc:   func(log sf.Logger) {},
+		VersionBuilder: v,
+		RouterFactory:  rf,
+		WrapHandler:    shf,
 	}
 	var wrappedHandle httprouter.Handle = func(http.ResponseWriter, *http.Request, httprouter.Params) {}
 	handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
 	middlewares := servicefoundation.DefaultMiddlewares
 
 	shf.
-		On("WrapHandler", "public", "do", middlewares, mock.AnythingOfType("Handle")).
+		On("Wrap", "public", "do", middlewares, mock.AnythingOfType("Handle")).
 		Return(wrappedHandle).
 		Twice() // for each route
 	rf.
@@ -89,18 +89,36 @@ func TestServiceImpl_Run(t *testing.T) {
 	var wrappedHandle httprouter.Handle = func(http.ResponseWriter, *http.Request, httprouter.Params) {}
 	var handle sf.Handle = func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
 
+	quitH := &mockQuitHandler{}
+	rootH := &mockRootHandler{}
+	livenessH := &mockLivenessHandler{}
+	versionH := &mockVersionHandler{}
+	readinessH := &mockReadinessHandler{}
+	metricsH := &mockMetricsHandler{}
+	healthH := &mockHealthHandler{}
+
+	handlers := &sf.Handlers{
+		QuitHandler:      quitH,
+		MetricsHandler:   metricsH,
+		VersionHandler:   versionH,
+		HealthHandler:    healthH,
+		LivenessHandler:  livenessH,
+		ReadinessHandler: readinessH,
+		RootHandler:      rootH,
+	}
+
 	log.On("Info", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	log.On("Debug", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	v.On("ToString").Return("(version)")
-	shf.On("CreateRootHandler").Return(handle).Times(3)
-	shf.On("CreateLivenessHandler").Return(handle)
-	shf.On("CreateReadinessHandler").Return(handle)
-	shf.On("CreateHealthHandler").Return(handle).Once()
-	shf.On("CreateMetricsHandler").Return(handle).Once()
-	shf.On("CreateQuitHandler").Return(handle).Once()
-	shf.On("CreateVersionHandler").Return(handle).Once()
+	rootH.On("NewRootHandler").Return(handle).Times(3)
+	livenessH.On("NewLivenessHandler").Return(handle)
+	readinessH.On("NewReadinessHandler").Return(handle)
+	healthH.On("NewHealthHandler").Return(handle).Once()
+	metricsH.On("NewMetricsHandler").Return(handle).Once()
+	quitH.On("NewQuitHandler").Return(handle).Once()
+	versionH.On("NewVersionHandler").Return(handle).Once()
 	shf.
-		On("WrapHandler", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		On("Wrap", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Return(wrappedHandle)
 	rf.
 		On("CreateRouter").
@@ -121,15 +139,16 @@ func TestServiceImpl_Run(t *testing.T) {
 		Globals: sf.ServiceGlobals{
 			AppName: "test-service",
 		},
-		Logger:                log,
-		Metrics:               m,
-		Port:                  1234,
-		ReadinessPort:         1235,
-		InternalPort:          1236,
-		ShutdownFunc:          func(log sf.Logger) {},
-		VersionBuilder:        v,
-		RouterFactory:         rf,
-		ServiceHandlerFactory: shf,
+		Logger:         log,
+		Metrics:        m,
+		Port:           1234,
+		ReadinessPort:  1235,
+		InternalPort:   1236,
+		ShutdownFunc:   func(log sf.Logger) {},
+		VersionBuilder: v,
+		RouterFactory:  rf,
+		Handlers:       handlers,
+		WrapHandler:    shf,
 		ExitFunc: func(int) {
 			fmt.Println("Exit called!")
 		},

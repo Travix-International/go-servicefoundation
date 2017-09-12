@@ -108,7 +108,7 @@ func getLogInstance(level string) *loggerImpl {
 
 	if inst == nil {
 		inst = loggerInstances[defaultLevel]
-		inst.Warn("LogMinLevel", "Failed parsing log level '%s', defaulting to '%s'", defaultLevel)
+		inst.Warn("LogMinLevel", "Failed parsing log level '%s', defaulting to '%s'", level, defaultLevel)
 	}
 	return inst
 }

@@ -10,15 +10,51 @@ import (
 type (
 	ExitFunc func(int)
 
+	WrapHandler interface {
+		Wrap(string, string, []Middleware, Handle) httprouter.Handle
+	}
+
+	RootHandler interface {
+		NewRootHandler() Handle
+	}
+
+	ReadinessHandler interface {
+		NewReadinessHandler() Handle
+	}
+
+	LivenessHandler interface {
+		NewLivenessHandler() Handle
+	}
+
+	HealthHandler interface {
+		NewHealthHandler() Handle
+	}
+
+	VersionHandler interface {
+		NewVersionHandler() Handle
+	}
+
+	MetricsHandler interface {
+		NewMetricsHandler() Handle
+	}
+
+	QuitHandler interface {
+		NewQuitHandler() Handle
+	}
+
 	ServiceHandlerFactory interface {
-		WrapHandler(string, string, []Middleware, Handle) httprouter.Handle
-		CreateRootHandler() Handle
-		CreateReadinessHandler() Handle
-		CreateLivenessHandler() Handle
-		CreateQuitHandler() Handle
-		CreateHealthHandler() Handle
-		CreateVersionHandler() Handle
-		CreateMetricsHandler() Handle
+		NewHandlers() *Handlers
+		WrapHandler
+	}
+
+	Handlers struct {
+		RootHandler      RootHandler
+		ReadinessHandler ReadinessHandler
+		LivenessHandler  LivenessHandler
+		HealthHandler    HealthHandler
+		VersionHandler   VersionHandler
+		MetricsHandler   MetricsHandler
+		QuitHandler      QuitHandler
 	}
 
 	serviceHandlerFactoryImpl struct {
@@ -38,7 +74,7 @@ func NewServiceHandlerFactory(middlewareWrapper MiddlewareWrapper, versionBuilde
 
 /* ServiceHandlerFactory implementation */
 
-func (f *serviceHandlerFactoryImpl) WrapHandler(subsystem, name string, middlewares []Middleware, handle Handle) httprouter.Handle {
+func (f *serviceHandlerFactoryImpl) Wrap(subsystem, name string, middlewares []Middleware, handle Handle) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		h := handle
 
@@ -49,25 +85,37 @@ func (f *serviceHandlerFactoryImpl) WrapHandler(subsystem, name string, middlewa
 	}
 }
 
-func (f *serviceHandlerFactoryImpl) CreateRootHandler() Handle {
+func (f *serviceHandlerFactoryImpl) NewHandlers() *Handlers {
+	return &Handlers{
+		RootHandler:      f,
+		QuitHandler:      f,
+		MetricsHandler:   f,
+		VersionHandler:   f,
+		HealthHandler:    f,
+		LivenessHandler:  f,
+		ReadinessHandler: f,
+	}
+}
+
+func (f *serviceHandlerFactoryImpl) NewRootHandler() Handle {
 	return func(w WrappedResponseWriter, _ *http.Request, _ RouterParams) {
 		w.WriteHeader(http.StatusOK)
 	}
 }
 
-func (f *serviceHandlerFactoryImpl) CreateReadinessHandler() Handle {
+func (f *serviceHandlerFactoryImpl) NewReadinessHandler() Handle {
 	return func(w WrappedResponseWriter, _ *http.Request, _ RouterParams) {
 		w.JSON(http.StatusOK, "ok")
 	}
 }
 
-func (f *serviceHandlerFactoryImpl) CreateLivenessHandler() Handle {
+func (f *serviceHandlerFactoryImpl) NewLivenessHandler() Handle {
 	return func(w WrappedResponseWriter, _ *http.Request, _ RouterParams) {
 		w.JSON(http.StatusOK, "ok")
 	}
 }
 
-func (f *serviceHandlerFactoryImpl) CreateQuitHandler() Handle {
+func (f *serviceHandlerFactoryImpl) NewQuitHandler() Handle {
 	return func(w WrappedResponseWriter, _ *http.Request, _ RouterParams) {
 		defer f.exitFunc(0)
 
@@ -79,20 +127,20 @@ func (f *serviceHandlerFactoryImpl) CreateQuitHandler() Handle {
 	}
 }
 
-func (f *serviceHandlerFactoryImpl) CreateHealthHandler() Handle {
+func (f *serviceHandlerFactoryImpl) NewHealthHandler() Handle {
 	return func(w WrappedResponseWriter, _ *http.Request, _ RouterParams) {
 		w.JSON(http.StatusOK, "ok")
 	}
 }
 
-func (f *serviceHandlerFactoryImpl) CreateVersionHandler() Handle {
+func (f *serviceHandlerFactoryImpl) NewVersionHandler() Handle {
 	return func(w WrappedResponseWriter, _ *http.Request, _ RouterParams) {
 		version := f.versionBuilder.ToMap()
 		w.JSON(http.StatusOK, version)
 	}
 }
 
-func (f *serviceHandlerFactoryImpl) CreateMetricsHandler() Handle {
+func (f *serviceHandlerFactoryImpl) NewMetricsHandler() Handle {
 	return func(w WrappedResponseWriter, r *http.Request, _ RouterParams) {
 		promhttp.Handler().ServeHTTP(w, r)
 	}

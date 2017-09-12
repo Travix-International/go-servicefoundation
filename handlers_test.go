@@ -20,7 +20,7 @@ func TestServiceHandlerFactoryImpl_CreateRootHandler(t *testing.T) {
 	w.On("WriteHeader", http.StatusOK).Once()
 
 	// Act
-	actual := sut.CreateRootHandler()
+	actual := sut.NewHandlers().RootHandler.NewRootHandler()
 	actual(w, nil, sf.RouterParams{})
 
 	w.AssertExpectations(t)
@@ -36,7 +36,7 @@ func TestServiceHandlerFactoryImpl_CreateReadinessHandler(t *testing.T) {
 	w.On("JSON", http.StatusOK, mock.Anything).Once()
 
 	// Act
-	actual := sut.CreateReadinessHandler()
+	actual := sut.NewHandlers().ReadinessHandler.NewReadinessHandler()
 	actual(w, nil, sf.RouterParams{})
 
 	w.AssertExpectations(t)
@@ -52,7 +52,7 @@ func TestServiceHandlerFactoryImpl_CreateLivenessHandler(t *testing.T) {
 	w.On("JSON", http.StatusOK, mock.Anything).Once()
 
 	// Act
-	actual := sut.CreateLivenessHandler()
+	actual := sut.NewHandlers().LivenessHandler.NewLivenessHandler()
 	actual(w, nil, sf.RouterParams{})
 
 	w.AssertExpectations(t)
@@ -68,7 +68,7 @@ func TestServiceHandlerFactoryImpl_CreateHealthHandler(t *testing.T) {
 	w.On("JSON", http.StatusOK, mock.Anything).Once()
 
 	// Act
-	actual := sut.CreateHealthHandler()
+	actual := sut.NewHandlers().HealthHandler.NewHealthHandler()
 	actual(w, nil, sf.RouterParams{})
 
 	w.AssertExpectations(t)
@@ -86,7 +86,7 @@ func TestServiceHandlerFactoryImpl_CreateVersionHandler(t *testing.T) {
 	w.On("JSON", http.StatusOK, version).Once()
 
 	// Act
-	actual := sut.CreateVersionHandler()
+	actual := sut.NewHandlers().VersionHandler.NewVersionHandler()
 	actual(w, nil, sf.RouterParams{})
 
 	w.AssertExpectations(t)
@@ -109,7 +109,7 @@ func TestServiceHandlerFactoryImpl_CreateMetricsHandler(t *testing.T) {
 		Once()
 
 	// Act
-	actual := sut.CreateMetricsHandler()
+	actual := sut.NewHandlers().MetricsHandler.NewMetricsHandler()
 	actual(w, r, sf.RouterParams{})
 	w.AssertExpectations(t)
 }
@@ -128,7 +128,7 @@ func TestServiceHandlerFactoryImpl_CreateQuitHandler(t *testing.T) {
 	w.On("Flush").Once()
 
 	// Act
-	actual := sut.CreateQuitHandler()
+	actual := sut.NewHandlers().QuitHandler.NewQuitHandler()
 	actual(w, nil, sf.RouterParams{})
 
 	w.AssertExpectations(t)
@@ -155,7 +155,7 @@ func TestServiceHandlerFactoryImpl_WrapHandler(t *testing.T) {
 	m.On("Wrap", subSystem, name, sf.NoCaching, mock.Anything).Return(handle).Once()
 
 	// Act
-	actual := sut.WrapHandler(subSystem, name, []sf.Middleware{sf.CORS, sf.NoCaching}, handle)
+	actual := sut.Wrap(subSystem, name, []sf.Middleware{sf.CORS, sf.NoCaching}, handle)
 	actual(w, r, httprouter.Params{})
 
 	assert.True(t, called)
