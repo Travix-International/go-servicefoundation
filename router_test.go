@@ -8,7 +8,7 @@ import (
 )
 
 func TestCreateRouterFactory(t *testing.T) {
-	sut := sf.CreateRouterFactory()
+	sut := sf.NewRouterFactory()
 
 	assert.NotNil(t, sut)
 

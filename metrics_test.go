@@ -14,7 +14,7 @@ func TestMetricsImpl(t *testing.T) {
 	log.
 		On("GetLogger").
 		Return(logger.New())
-	sut := sf.CreateMetrics("testcount", log)
+	sut := sf.NewMetrics("testcount", log)
 
 	// Act
 	sut.Count("sub", "count", "help")

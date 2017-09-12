@@ -34,7 +34,7 @@ func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
 		w := &mockResponseWriter{}
 		h := &mockMetricsHistogram{}
 		p := sf.RouterParams{}
-		sut := sf.CreateMiddlewareWrapper(log, m, corsOptions, sf.ServiceGlobals{})
+		sut := sf.NewMiddlewareWrapper(log, m, corsOptions, sf.ServiceGlobals{})
 
 		w.On("Header").Return(http.Header{})
 		w.On("Status").Return(http.StatusOK)
@@ -62,7 +62,7 @@ func TestMiddlewareWrapperImpl_Wrap_UnknownMiddleware_ReturnsUnwrappedHandler(t 
 	corsOptions := &sf.CORSOptions{}
 	handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {
 	}
-	sut := sf.CreateMiddlewareWrapper(log, m, corsOptions, sf.ServiceGlobals{})
+	sut := sf.NewMiddlewareWrapper(log, m, corsOptions, sf.ServiceGlobals{})
 
 	log.On("Warn", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 
@@ -89,7 +89,7 @@ func TestMiddlewareWrapperImpl_Wrap_PanicsAreHandled(t *testing.T) {
 		r, _ := http.NewRequest("GET", "https://www.sf.com/some/url", rdr)
 		w := &mockResponseWriter{}
 		p := sf.RouterParams{}
-		sut := sf.CreateMiddlewareWrapper(log, m, corsOptions, sf.ServiceGlobals{})
+		sut := sf.NewMiddlewareWrapper(log, m, corsOptions, sf.ServiceGlobals{})
 
 		log.On("Error", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 		w.On("WriteHeader", http.StatusInternalServerError).Once()

@@ -19,7 +19,7 @@ func TestCreateDefaultService(t *testing.T) {
 	}
 
 	// Act
-	sut := servicefoundation.CreateDefaultService("some-name", []string{}, shutdownFn)
+	sut := servicefoundation.NewService("some-name", []string{}, shutdownFn)
 
 	assert.NotNil(t, sut)
 }
@@ -61,7 +61,7 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 		Return(router).
 		Times(3) // public, readiness and internal
 
-	sut := servicefoundation.CreateService(opt)
+	sut := servicefoundation.NewCustomService(opt)
 
 	// Act
 	sut.AddRoute("do", []string{"/do", "/do2"}, []string{http.MethodGet, http.MethodPost}, middlewares, handle)
@@ -135,7 +135,7 @@ func TestServiceImpl_Run(t *testing.T) {
 		},
 	}
 
-	sut := servicefoundation.CreateService(opt)
+	sut := servicefoundation.NewCustomService(opt)
 
 	// Act
 	go sut.Run(ctx)

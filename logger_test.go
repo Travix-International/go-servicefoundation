@@ -8,7 +8,7 @@ import (
 )
 
 func TestLoggerImpl_GetLogger_DebugLevel(t *testing.T) {
-	sut := sf.CreateLogger("Debug")
+	sut := sf.NewLogger("Debug")
 
 	// Act
 	sut.Debug("event", "msg %s %s", "arg1", "arg2")
@@ -21,7 +21,7 @@ func TestLoggerImpl_GetLogger_DebugLevel(t *testing.T) {
 }
 
 func TestLoggerImpl_GetLogger_ErrorLevel(t *testing.T) {
-	sut := sf.CreateLogger("Error")
+	sut := sf.NewLogger("Error")
 
 	// Act
 	sut.Debug("event", "msg %s %s", "arg1", "arg2")
@@ -34,7 +34,7 @@ func TestLoggerImpl_GetLogger_ErrorLevel(t *testing.T) {
 }
 
 func TestLoggerImpl_GetLogger_UnknownLevel(t *testing.T) {
-	sut := sf.CreateLogger("Whatevah")
+	sut := sf.NewLogger("Whatevah")
 
 	// Act
 	sut.Debug("event", "msg %s %s", "arg1", "arg2")
@@ -47,7 +47,7 @@ func TestLoggerImpl_GetLogger_UnknownLevel(t *testing.T) {
 }
 
 func TestLoggerImpl_GetLogger_StaticMsg(t *testing.T) {
-	sut := sf.CreateLogger("Debug")
+	sut := sf.NewLogger("Debug")
 
 	// Act
 	sut.Debug("event", "msg")

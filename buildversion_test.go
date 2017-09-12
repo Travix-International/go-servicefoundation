@@ -8,7 +8,7 @@ import (
 )
 
 func TestCreateDefaultVersionBuilder(t *testing.T) {
-	sut := sf.CreateDefaultVersionBuilder()
+	sut := sf.NewVersionBuilder()
 
 	actual := sut.ToString()
 	actualMap := sut.ToMap()
@@ -28,7 +28,7 @@ func TestCreateVersionBuilder(t *testing.T) {
 		GitHash:       "hash",
 	}
 
-	sut := sf.CreateVersionBuilder(version)
+	sut := sf.NewCustomVersionBuilder(version)
 
 	actual := sut.ToString()
 	actualMap := sut.ToMap()

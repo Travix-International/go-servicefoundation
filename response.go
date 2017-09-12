@@ -33,7 +33,7 @@ const (
 	ContentTypeXML    = "application/xml"
 )
 
-func CreateWrappedResponseWriter(w http.ResponseWriter) WrappedResponseWriter {
+func NewWrappedResponseWriter(w http.ResponseWriter) WrappedResponseWriter {
 	return &wrappedResponseWriterImpl{ResponseWriter: w, status: http.StatusOK}
 }
 

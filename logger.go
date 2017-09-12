@@ -37,7 +37,7 @@ var (
 	once            sync.Once
 )
 
-func CreateLogger(logMinFilter string) Logger {
+func NewLogger(logMinFilter string) Logger {
 	once.Do(func() {
 		for i, level := range levels {
 			log := logger.New()

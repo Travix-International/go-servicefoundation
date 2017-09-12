@@ -84,7 +84,49 @@ type (
 // DefaultMiddlewares contains the default middleware wrappers for the predefined service endpoints.
 var DefaultMiddlewares = []Middleware{PanicTo500, RequestLogging, NoCaching}
 
-func CreateService(options ServiceOptions) Service {
+// NewService creates and returns a Service that uses environment variables for default configuration.
+func NewService(name string, allowedMethods []string, shutdownFunc ShutdownFunc) Service {
+	appName := env.OrDefault(envAppName, name)
+	serverName := env.OrDefault(envServerName, name)
+	deployEnvironment := env.OrDefault(envDeployEnvironment, "UNKNOWN")
+	corsOptions := CORSOptions{
+		AllowedOrigins: env.ListOrDefault(envCORSOrigins, []string{"*"}),
+		AllowedMethods: allowedMethods,
+	}
+	logger := NewLogger(env.OrDefault(envLogMinFilter, defaultLogMinFilter))
+	metrics := NewMetrics(name, logger)
+	versionBuilder := NewVersionBuilder()
+	version := NewBuildVersion()
+	globals := ServiceGlobals{
+		AppName:           appName,
+		ServerName:        serverName,
+		DeployEnvironment: deployEnvironment,
+		VersionNumber:     version.VersionNumber,
+	}
+	middlewareWrapper := NewMiddlewareWrapper(logger, metrics, &corsOptions, globals)
+	exitFunc := createExitFunc(logger, shutdownFunc)
+	port := env.AsInt(envHTTPpPort, defaultHTTPPort)
+
+	opt := ServiceOptions{
+		Globals:               globals,
+		ServerTimeout:         time.Second * 20,
+		Port:                  port,
+		ReadinessPort:         port + 1,
+		InternalPort:          port + 2,
+		ServiceHandlerFactory: NewServiceHandlerFactory(middlewareWrapper, versionBuilder, exitFunc),
+		RouterFactory:         NewRouterFactory(),
+		Logger:                logger,
+		Metrics:               metrics,
+		VersionBuilder:        versionBuilder,
+		ShutdownFunc:          shutdownFunc,
+		ExitFunc:              exitFunc,
+	}
+
+	return NewCustomService(opt)
+}
+
+// NewCustomService allows you to customize ServiceFoundation using your own implementations of factories.
+func NewCustomService(options ServiceOptions) Service {
 	return &serviceImpl{
 		globals:         options.Globals,
 		timeout:         options.ServerTimeout,
@@ -103,47 +145,6 @@ func CreateService(options ServiceOptions) Service {
 		sendChan:        make(chan bool, 1),
 		receiveChan:     make(chan bool, 1),
 	}
-}
-
-// CreateDefaultService creates and returns a Service that uses environment variables for default configuration.
-func CreateDefaultService(name string, allowedMethods []string, shutdownFunc ShutdownFunc) Service {
-	appName := env.OrDefault(envAppName, name)
-	serverName := env.OrDefault(envServerName, name)
-	deployEnvironment := env.OrDefault(envDeployEnvironment, "UNKNOWN")
-	corsOptions := CORSOptions{
-		AllowedOrigins: env.ListOrDefault(envCORSOrigins, []string{"*"}),
-		AllowedMethods: allowedMethods,
-	}
-	logger := CreateLogger(env.OrDefault(envLogMinFilter, defaultLogMinFilter))
-	metrics := CreateMetrics(name, logger)
-	versionBuilder := CreateDefaultVersionBuilder()
-	version := CreateDefaultBuildVersion()
-	globals := ServiceGlobals{
-		AppName:           appName,
-		ServerName:        serverName,
-		DeployEnvironment: deployEnvironment,
-		VersionNumber:     version.VersionNumber,
-	}
-	middlewareWrapper := CreateMiddlewareWrapper(logger, metrics, &corsOptions, globals)
-	exitFunc := createExitFunc(logger, shutdownFunc)
-	port := env.AsInt(envHTTPpPort, defaultHTTPPort)
-
-	opt := ServiceOptions{
-		Globals:               globals,
-		ServerTimeout:         time.Second * 20,
-		Port:                  port,
-		ReadinessPort:         port + 1,
-		InternalPort:          port + 2,
-		ServiceHandlerFactory: CreateServiceHandlerFactory(middlewareWrapper, versionBuilder, exitFunc),
-		RouterFactory:         CreateRouterFactory(),
-		Logger:                logger,
-		Metrics:               metrics,
-		VersionBuilder:        versionBuilder,
-		ShutdownFunc:          shutdownFunc,
-		ExitFunc:              exitFunc,
-	}
-
-	return CreateService(opt)
 }
 
 // overwrite the default os.exit() to run delayed, giving the quit handler a chance to return a status

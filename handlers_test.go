@@ -15,7 +15,7 @@ func TestServiceHandlerFactoryImpl_CreateRootHandler(t *testing.T) {
 	v := &mockVersionBuilder{}
 	exitFn := func(int) {}
 	w := &mockResponseWriter{}
-	sut := sf.CreateServiceHandlerFactory(m, v, exitFn)
+	sut := sf.NewServiceHandlerFactory(m, v, exitFn)
 
 	w.On("WriteHeader", http.StatusOK).Once()
 
@@ -31,7 +31,7 @@ func TestServiceHandlerFactoryImpl_CreateReadinessHandler(t *testing.T) {
 	v := &mockVersionBuilder{}
 	exitFn := func(int) {}
 	w := &mockResponseWriter{}
-	sut := sf.CreateServiceHandlerFactory(m, v, exitFn)
+	sut := sf.NewServiceHandlerFactory(m, v, exitFn)
 
 	w.On("JSON", http.StatusOK, mock.Anything).Once()
 
@@ -47,7 +47,7 @@ func TestServiceHandlerFactoryImpl_CreateLivenessHandler(t *testing.T) {
 	v := &mockVersionBuilder{}
 	exitFn := func(int) {}
 	w := &mockResponseWriter{}
-	sut := sf.CreateServiceHandlerFactory(m, v, exitFn)
+	sut := sf.NewServiceHandlerFactory(m, v, exitFn)
 
 	w.On("JSON", http.StatusOK, mock.Anything).Once()
 
@@ -63,7 +63,7 @@ func TestServiceHandlerFactoryImpl_CreateHealthHandler(t *testing.T) {
 	v := &mockVersionBuilder{}
 	exitFn := func(int) {}
 	w := &mockResponseWriter{}
-	sut := sf.CreateServiceHandlerFactory(m, v, exitFn)
+	sut := sf.NewServiceHandlerFactory(m, v, exitFn)
 
 	w.On("JSON", http.StatusOK, mock.Anything).Once()
 
@@ -80,7 +80,7 @@ func TestServiceHandlerFactoryImpl_CreateVersionHandler(t *testing.T) {
 	exitFn := func(int) {}
 	w := &mockResponseWriter{}
 	version := make(map[string]string)
-	sut := sf.CreateServiceHandlerFactory(m, v, exitFn)
+	sut := sf.NewServiceHandlerFactory(m, v, exitFn)
 
 	v.On("ToMap").Return(version).Once()
 	w.On("JSON", http.StatusOK, version).Once()
@@ -100,7 +100,7 @@ func TestServiceHandlerFactoryImpl_CreateMetricsHandler(t *testing.T) {
 	w := &mockResponseWriter{}
 	rdr := &mockReader{}
 	r, _ := http.NewRequest("GET", "https://www.sf.com/some/url", rdr)
-	sut := sf.CreateServiceHandlerFactory(m, v, exitFn)
+	sut := sf.NewServiceHandlerFactory(m, v, exitFn)
 
 	w.On("Header").Return(http.Header{}).Once()
 	w.
@@ -122,7 +122,7 @@ func TestServiceHandlerFactoryImpl_CreateQuitHandler(t *testing.T) {
 		called = true
 	}
 	w := &mockResponseWriter{}
-	sut := sf.CreateServiceHandlerFactory(m, v, exitFn)
+	sut := sf.NewServiceHandlerFactory(m, v, exitFn)
 
 	w.On("WriteHeader", http.StatusOK).Once()
 	w.On("Flush").Once()
@@ -148,7 +148,7 @@ func TestServiceHandlerFactoryImpl_WrapHandler(t *testing.T) {
 	handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {
 		called = true
 	}
-	sut := sf.CreateServiceHandlerFactory(m, v, exitFn)
+	sut := sf.NewServiceHandlerFactory(m, v, exitFn)
 
 	w.On("JSON", http.StatusOK, mock.Anything).Once()
 	m.On("Wrap", subSystem, name, sf.CORS, mock.Anything).Return(handle).Once()

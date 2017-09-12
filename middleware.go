@@ -34,7 +34,7 @@ type middlewareWrapperImpl struct {
 	corsOptions *cors.Options
 }
 
-func CreateMiddlewareWrapper(logger Logger, metrics Metrics, corsOptions *CORSOptions, globals ServiceGlobals) MiddlewareWrapper {
+func NewMiddlewareWrapper(logger Logger, metrics Metrics, corsOptions *CORSOptions, globals ServiceGlobals) MiddlewareWrapper {
 	m := &middlewareWrapperImpl{
 		logger:  logger,
 		metrics: metrics,
@@ -171,7 +171,7 @@ func (m *middlewareWrapperImpl) wrapWithCORS(subsystem, name string, handler Han
 		c := cors.New(*m.corsOptions)
 
 		h := func(ww http.ResponseWriter, r *http.Request) {
-			w := CreateWrappedResponseWriter(ww)
+			w := NewWrappedResponseWriter(ww)
 			handler(w, r, p)
 		}
 		c.ServeHTTP(w, r, h)

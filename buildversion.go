@@ -29,8 +29,8 @@ const (
 	unknown = "?"
 )
 
-// CreateDefaultBuildVersion creates and returns a new BuildVersion based on conventional environment variables.
-func CreateDefaultBuildVersion() BuildVersion {
+// NewBuildVersion creates and returns a new BuildVersion based on conventional environment variables.
+func NewBuildVersion() BuildVersion {
 	return BuildVersion{
 		VersionNumber: env.OrDefault("GO_PIPELINE_LABEL", unknown),
 		BuildDate:     env.OrDefault("BUILD_DATE", unknown),
@@ -38,14 +38,14 @@ func CreateDefaultBuildVersion() BuildVersion {
 	}
 }
 
-// CreateDefaultVersionBuilder creates and returns a VersionBuilder based on conventional environment variables.
-func CreateDefaultVersionBuilder() VersionBuilder {
-	version := CreateDefaultBuildVersion()
-	return CreateVersionBuilder(version)
+// NewVersionBuilder creates and returns a VersionBuilder based on conventional environment variables.
+func NewVersionBuilder() VersionBuilder {
+	version := NewBuildVersion()
+	return NewCustomVersionBuilder(version)
 }
 
-// CreateVersionBuilder creates and returns a VersionBuilder for the given BuildVersion.
-func CreateVersionBuilder(version BuildVersion) VersionBuilder {
+// NewCustomVersionBuilder creates and returns a VersionBuilder for the given BuildVersion.
+func NewCustomVersionBuilder(version BuildVersion) VersionBuilder {
 	return &versionBuilderImpl{
 		version: version,
 	}

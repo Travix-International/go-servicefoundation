@@ -23,7 +23,7 @@ func TestCreateWrappedResponseWriter(t *testing.T) {
 	w.
 		On("WriteHeader", mock.AnythingOfType("int")).
 		Twice()
-	sut := sf.CreateWrappedResponseWriter(w)
+	sut := sf.NewWrappedResponseWriter(w)
 
 	// Act
 	sut.Write([]byte("okay"))
@@ -49,7 +49,7 @@ func TestWrappedResponseWriterImpl_JSON(t *testing.T) {
 		On("WriteHeader", mock.AnythingOfType("int")).
 		Once()
 	obj := testObj{"Fifi", 22}
-	sut := sf.CreateWrappedResponseWriter(w)
+	sut := sf.NewWrappedResponseWriter(w)
 
 	sut.JSON(status, obj)
 
@@ -72,7 +72,7 @@ func TestWrappedResponseWriterImpl_XML(t *testing.T) {
 		On("WriteHeader", mock.AnythingOfType("int")).
 		Once()
 	obj := testObj{"Yoyo", 33}
-	sut := sf.CreateWrappedResponseWriter(w)
+	sut := sf.NewWrappedResponseWriter(w)
 
 	sut.XML(status, obj)
 
@@ -93,7 +93,7 @@ func TestWrappedResponseWriterImpl_AcceptsJSON(t *testing.T) {
 	r.Header.Add(sf.AcceptHeader, sf.ContentTypeJSON)
 
 	w := &mockResponseWriter{}
-	sut := sf.CreateWrappedResponseWriter(w)
+	sut := sf.NewWrappedResponseWriter(w)
 
 	actual := sut.AcceptsXML(r)
 
@@ -124,7 +124,7 @@ func TestWrappedResponseWriterImpl_WriteResponse_AsXML(t *testing.T) {
 	w.
 		On("WriteHeader", mock.AnythingOfType("int")).
 		Once()
-	sut := sf.CreateWrappedResponseWriter(w)
+	sut := sf.NewWrappedResponseWriter(w)
 	obj := testObj{"Gaga", 44}
 
 	sut.WriteResponse(r, status, obj)
@@ -157,7 +157,7 @@ func TestWrappedResponseWriterImpl_WriteResponse_AsJSON(t *testing.T) {
 	w.
 		On("WriteHeader", mock.AnythingOfType("int")).
 		Once()
-	sut := sf.CreateWrappedResponseWriter(w)
+	sut := sf.NewWrappedResponseWriter(w)
 	obj := testObj{"Mumu", 55}
 
 	sut.WriteResponse(r, status, obj)
@@ -174,7 +174,7 @@ func TestWrappedResponseWriterImpl_SetCaching(t *testing.T) {
 		On("Header").
 		Return(h).
 		Twice()
-	sut := sf.CreateWrappedResponseWriter(w)
+	sut := sf.NewWrappedResponseWriter(w)
 
 	sut.SetCaching(66)
 

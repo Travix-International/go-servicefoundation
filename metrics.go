@@ -28,7 +28,7 @@ type (
 	}
 )
 
-func CreateMetrics(namespace string, logger Logger) Metrics {
+func NewMetrics(namespace string, logger Logger) Metrics {
 	return &metricsImpl{
 		// We're not using the namespace in metrics, because we won't be able to write "basic" metrics.
 		metrics: metrics.NewMetrics("", logger.GetLogger()),

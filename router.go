@@ -30,7 +30,7 @@ var (
 	MethodsForPost = []string{http.MethodPost}
 )
 
-func CreateRouterFactory() RouterFactory {
+func NewRouterFactory() RouterFactory {
 	return &routerFactoryImpl{}
 }
 

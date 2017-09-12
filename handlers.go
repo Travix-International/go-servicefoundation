@@ -28,7 +28,7 @@ type (
 	}
 )
 
-func CreateServiceHandlerFactory(middlewareWrapper MiddlewareWrapper, versionBuilder VersionBuilder, exitFunc ExitFunc) ServiceHandlerFactory {
+func NewServiceHandlerFactory(middlewareWrapper MiddlewareWrapper, versionBuilder VersionBuilder, exitFunc ExitFunc) ServiceHandlerFactory {
 	return &serviceHandlerFactoryImpl{
 		versionBuilder:    versionBuilder,
 		exitFunc:          exitFunc,
@@ -45,7 +45,7 @@ func (f *serviceHandlerFactoryImpl) WrapHandler(subsystem, name string, middlewa
 		for _, middleware := range middlewares {
 			h = f.middlewareWrapper.Wrap(subsystem, name, middleware, h)
 		}
-		h(CreateWrappedResponseWriter(w), r, RouterParams{Params: p})
+		h(NewWrappedResponseWriter(w), r, RouterParams{Params: p})
 	}
 }
 
