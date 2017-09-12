@@ -140,7 +140,7 @@ func TestServiceImpl_Run(t *testing.T) {
 	// Act
 	go sut.Run(ctx)
 
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(11 * time.Millisecond)
 	shf.AssertExpectations(t)
 	rf.AssertExpectations(t)
 }
