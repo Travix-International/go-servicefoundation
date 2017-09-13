@@ -99,19 +99,26 @@ package main
 import (
 	"context"
 	"net/http"
+	"time"
 
 	sf "github.com/Prutswonder/go-servicefoundation"
 )
 
-type CustomHandlers struct {
+type CustomServiceStateReader struct {
+	sf.ServiceStateReader
+	isWarmedUp bool
 }
 
-// Implementation of ReadinessHandler interface
-func (h CustomHandlers) NewReadinessHandler() sf.Handle {
-	return func(w sf.WrappedResponseWriter, _ *http.Request, _ sf.RouterParams) {
-		// Customize your readiness handler here
-		w.JSON(http.StatusOK, "ready!")
-	}
+func (r *CustomServiceStateReader) IsLive() bool {
+	return true
+}
+
+func (r *CustomServiceStateReader) IsReady() bool {
+	return r.isWarmedUp
+}
+
+func (r *CustomServiceStateReader) IsHealthy() bool {
+	return true
 }
 
 func main() {
@@ -119,8 +126,17 @@ func main() {
 		log.Info("GracefulShutdown", "Handling graceful shutdown")
 	}
 
+	stateReader := &CustomServiceStateReader{}
+
+	go func() {
+		// Simulating warm-up time...
+		time.Sleep(10 * time.Second)
+		stateReader.isWarmedUp = true
+	}()
+
 	opt := sf.NewServiceOptions("HelloWorldService", []string{http.MethodGet}, shutdownFn)
-	opt.Handlers.ReadinessHandler = &CustomHandlers{}
+	opt.ServiceStateReader = stateReader
+	opt.SetHandlers() // Required to re-bind the state to the ReadinessHandler
 
 	svc := sf.NewCustomService(opt)
 

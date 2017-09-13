@@ -61,14 +61,18 @@ type (
 		versionBuilder    VersionBuilder
 		exitFunc          ExitFunc
 		middlewareWrapper MiddlewareWrapper
+		stateReader       ServiceStateReader
 	}
 )
 
-func NewServiceHandlerFactory(middlewareWrapper MiddlewareWrapper, versionBuilder VersionBuilder, exitFunc ExitFunc) ServiceHandlerFactory {
+func NewServiceHandlerFactory(middlewareWrapper MiddlewareWrapper, versionBuilder VersionBuilder,
+	stateReader ServiceStateReader, exitFunc ExitFunc) ServiceHandlerFactory {
+
 	return &serviceHandlerFactoryImpl{
 		versionBuilder:    versionBuilder,
 		exitFunc:          exitFunc,
 		middlewareWrapper: middlewareWrapper,
+		stateReader:       stateReader,
 	}
 }
 
@@ -105,13 +109,21 @@ func (f *serviceHandlerFactoryImpl) NewRootHandler() Handle {
 
 func (f *serviceHandlerFactoryImpl) NewReadinessHandler() Handle {
 	return func(w WrappedResponseWriter, _ *http.Request, _ RouterParams) {
-		w.JSON(http.StatusOK, "ok")
+		if f.stateReader.IsReady() {
+			w.JSON(http.StatusOK, "ok")
+		} else {
+			w.JSON(http.StatusInternalServerError, "not ready")
+		}
 	}
 }
 
 func (f *serviceHandlerFactoryImpl) NewLivenessHandler() Handle {
 	return func(w WrappedResponseWriter, _ *http.Request, _ RouterParams) {
-		w.JSON(http.StatusOK, "ok")
+		if f.stateReader.IsLive() {
+			w.JSON(http.StatusOK, "ok")
+		} else {
+			w.JSON(http.StatusInternalServerError, "not ready")
+		}
 	}
 }
 
@@ -129,7 +141,11 @@ func (f *serviceHandlerFactoryImpl) NewQuitHandler() Handle {
 
 func (f *serviceHandlerFactoryImpl) NewHealthHandler() Handle {
 	return func(w WrappedResponseWriter, _ *http.Request, _ RouterParams) {
-		w.JSON(http.StatusOK, "ok")
+		if f.stateReader.IsHealthy() {
+			w.JSON(http.StatusOK, "ok")
+		} else {
+			w.JSON(http.StatusInternalServerError, "not healthy")
+		}
 	}
 }
 

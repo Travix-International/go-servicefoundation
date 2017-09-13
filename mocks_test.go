@@ -292,3 +292,25 @@ func (m *mockMetricsHandler) NewMetricsHandler() sf.Handle {
 	a := m.Called()
 	return a.Get(0).(sf.Handle)
 }
+
+/* sf.ServiceStateReader mock */
+
+type mockServiceStateReader struct {
+	mock.Mock
+	sf.ServiceStateReader
+}
+
+func (m *mockServiceStateReader) IsLive() bool {
+	a := m.Called()
+	return a.Bool(0)
+}
+
+func (m *mockServiceStateReader) IsReady() bool {
+	a := m.Called()
+	return a.Bool(0)
+}
+
+func (m *mockServiceStateReader) IsHealthy() bool {
+	a := m.Called()
+	return a.Bool(0)
+}

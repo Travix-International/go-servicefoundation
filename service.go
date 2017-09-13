@@ -27,6 +27,7 @@ const (
 )
 
 type (
+	WarmUpFunc   func(log Logger) error
 	ShutdownFunc func(log Logger)
 
 	ServiceGlobals struct {
@@ -37,19 +38,29 @@ type (
 	}
 
 	ServiceOptions struct {
-		Globals        ServiceGlobals
-		Port           int
-		ReadinessPort  int
-		InternalPort   int
-		Logger         Logger
-		Metrics        Metrics
-		RouterFactory  RouterFactory
-		Handlers       *Handlers
-		WrapHandler    WrapHandler
-		VersionBuilder VersionBuilder
-		ShutdownFunc   ShutdownFunc
-		ExitFunc       ExitFunc
-		ServerTimeout  time.Duration
+		Globals            ServiceGlobals
+		Port               int
+		ReadinessPort      int
+		InternalPort       int
+		Logger             Logger
+		Metrics            Metrics
+		RouterFactory      RouterFactory
+		MiddlewareWrapper  MiddlewareWrapper
+		Handlers           *Handlers
+		WrapHandler        WrapHandler
+		VersionBuilder     VersionBuilder
+		ServiceStateReader ServiceStateReader
+		WarmupFunc         WarmUpFunc
+		ShutdownFunc       ShutdownFunc
+		ExitFunc           ExitFunc
+		WarmUpTimeout      time.Duration
+		ServerTimeout      time.Duration
+	}
+
+	ServiceStateReader interface {
+		IsLive() bool
+		IsReady() bool
+		IsHealthy() bool
 	}
 
 	Service interface {
@@ -57,9 +68,13 @@ type (
 		AddRoute(name string, routes []string, methods []string, middlewares []Middleware, handler Handle)
 	}
 
+	serviceStateReaderImpl struct {
+	}
+
 	serviceImpl struct {
 		globals         ServiceGlobals
-		timeout         time.Duration
+		warmUpTimeout   time.Duration
+		serverTimeout   time.Duration
 		port            int
 		readinessPort   int
 		internalPort    int
@@ -71,6 +86,8 @@ type (
 		handlers        *Handlers
 		wrapHandler     WrapHandler
 		versionBuilder  VersionBuilder
+		stateReader     ServiceStateReader
+		warmUpFunc      WarmUpFunc
 		shutdownFunc    ShutdownFunc
 		exitFunc        ExitFunc
 		quitting        bool
@@ -113,31 +130,36 @@ func NewServiceOptions(name string, allowedMethods []string, shutdownFunc Shutdo
 		VersionNumber:     version.VersionNumber,
 	}
 	middlewareWrapper := NewMiddlewareWrapper(logger, metrics, &corsOptions, globals)
+	stateReader := NewServiceStateReader()
 	exitFunc := NewExitFunc(logger, shutdownFunc)
 	port := env.AsInt(envHTTPpPort, defaultHTTPPort)
-	factory := NewServiceHandlerFactory(middlewareWrapper, versionBuilder, exitFunc)
 
-	return ServiceOptions{
-		Globals:        globals,
-		ServerTimeout:  time.Second * 20,
-		Port:           port,
-		ReadinessPort:  port + 1,
-		InternalPort:   port + 2,
-		Handlers:       factory.NewHandlers(),
-		WrapHandler:    factory,
-		RouterFactory:  NewRouterFactory(),
-		Logger:         logger,
-		Metrics:        metrics,
-		VersionBuilder: versionBuilder,
-		ExitFunc:       exitFunc,
+	opt := ServiceOptions{
+		Globals:            globals,
+		WarmUpTimeout:      time.Second * 20,
+		ServerTimeout:      time.Second * 20,
+		Port:               port,
+		ReadinessPort:      port + 1,
+		InternalPort:       port + 2,
+		MiddlewareWrapper:  middlewareWrapper,
+		RouterFactory:      NewRouterFactory(),
+		Logger:             logger,
+		Metrics:            metrics,
+		VersionBuilder:     versionBuilder,
+		ServiceStateReader: stateReader,
+		ExitFunc:           exitFunc,
+		// WarmUpFunc is not provided by default, meaning the service is available instantly
 	}
+	opt.SetHandlers()
+	return opt
 }
 
 // NewCustomService allows you to customize ServiceFoundation using your own implementations of factories.
 func NewCustomService(options ServiceOptions) Service {
 	return &serviceImpl{
 		globals:         options.Globals,
-		timeout:         options.ServerTimeout,
+		warmUpTimeout:   options.WarmUpTimeout,
+		serverTimeout:   options.ServerTimeout,
 		port:            options.Port,
 		readinessPort:   options.ReadinessPort,
 		internalPort:    options.InternalPort,
@@ -149,6 +171,8 @@ func NewCustomService(options ServiceOptions) Service {
 		handlers:        options.Handlers,
 		wrapHandler:     options.WrapHandler,
 		versionBuilder:  options.VersionBuilder,
+		stateReader:     options.ServiceStateReader,
+		warmUpFunc:      options.WarmupFunc,
 		exitFunc:        options.ExitFunc,
 		sendChan:        make(chan bool, 1),
 		receiveChan:     make(chan bool, 1),
@@ -177,6 +201,33 @@ func NewExitFunc(log Logger, shutdownFunc ShutdownFunc) func(int) {
 		// Allow the go-routine to be spawned
 		time.Sleep(1 * time.Millisecond)
 	}
+}
+
+func NewServiceStateReader() ServiceStateReader {
+	return &serviceStateReaderImpl{}
+}
+
+/* ServiceStateReader implementation */
+
+func (s *serviceStateReaderImpl) IsLive() bool {
+	return true
+}
+
+func (s *serviceStateReaderImpl) IsReady() bool {
+	return true
+}
+
+func (s *serviceStateReaderImpl) IsHealthy() bool {
+	return true
+}
+
+/* ServiceOptions implementation */
+
+// SetHandlers is used to update the handler references in ServiceOptions to use the correct middleware and state.
+func (o *ServiceOptions) SetHandlers() {
+	factory := NewServiceHandlerFactory(o.MiddlewareWrapper, o.VersionBuilder, o.ServiceStateReader, o.ExitFunc)
+	o.Handlers = factory.NewHandlers()
+	o.WrapHandler = factory
 }
 
 /* Service implementation */
