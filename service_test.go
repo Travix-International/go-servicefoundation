@@ -176,3 +176,12 @@ func TestNewExitFunc(t *testing.T) {
 	assert.NotNil(t, sut)
 	go sut(1)
 }
+
+func TestNewServiceStateReader(t *testing.T) {
+	// Act
+	sut := sf.NewServiceStateReader()
+
+	assert.True(t, sut.IsLive())
+	assert.True(t, sut.IsReady())
+	assert.True(t, sut.IsHealthy())
+}

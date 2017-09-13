@@ -17,12 +17,12 @@ ServiceFoundation enables you to create Web Services containing:
 * Handling of SIGTERM and SIGINT with a custom shutdown function to properly free your own resources.
 * Customizable server timeouts
 * Request/response logging as middleware
+* Support service warm-up through state customization
 
 To do:
 - [ ] Standardize metrics
 - [ ] Standardize log messages
 - [ ] Extend logging with meta information
-- [ ] Support service warm-up
 - [ ] De-duplicate CORS elements in slices
 - [ ] Automated documentation (GoDocs?)
 
