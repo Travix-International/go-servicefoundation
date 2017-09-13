@@ -1,10 +1,10 @@
 language: go
 
 go:
-  - 1.7.x
+  - 1.9.x
 
 script:
-  - 'make run-tests'
+  - 'make cover-remote'
 
 notifications:
   email: false

@@ -3,7 +3,7 @@
 ## Working with the source code
 
 * Clone the repo
-* Run `make` with the default target to fetch gvt, restore dependencies and run tests (if any) 
+* Run `make` with the default target to fetch glide, restore dependencies and run tests (if any) 
 
 ## Pull Requests
 

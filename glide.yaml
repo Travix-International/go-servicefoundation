@@ -1,0 +1,13 @@
+package: github.com/Prutswonder/go-servicefoundation
+import:
+- package: github.com/Travix-International/logger
+  version: ~0.5.0
+- package: github.com/Travix-International/go-metrics
+- package: github.com/julienschmidt/httprouter
+  version: ~1.1.0
+- package: github.com/prometheus/client_golang
+  version: ~0.8.0
+  subpackages:
+  - prometheus/promhttp
+- package: github.com/stretchr/testify
+  version: ~1.1.4
