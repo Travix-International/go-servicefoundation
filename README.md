@@ -1,6 +1,6 @@
-# ServiceFoundation [![Build Status](https://travis-ci.org/Prutswonder/go-servicefoundation.svg?branch=v2)](https://travis-ci.org/Prutswonder/go-servicefoundation?branch=v2)
+# ServiceFoundation [![Build Status](https://travis-ci.org/Prutswonder/go-servicefoundation.svg?branch=master)](https://travis-ci.org/Prutswonder/go-servicefoundation?branch=master)
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/Prutswonder/go-servicefoundation)](https://goreportcard.com/report/github.com/Prutswonder/go-servicefoundation) [![Coverage Status](https://coveralls.io/repos/github/Prutswonder/go-servicefoundation/badge.svg?branch=v2)](https://coveralls.io/github/Prutswonder/go-servicefoundation?branch=v2) 
+[![Go Report Card](https://goreportcard.com/badge/github.com/Prutswonder/go-servicefoundation)](https://goreportcard.com/report/github.com/Prutswonder/go-servicefoundation) [![Coverage Status](https://coveralls.io/repos/github/Prutswonder/go-servicefoundation/badge.svg?branch=master)](https://coveralls.io/github/Prutswonder/go-servicefoundation?branch=master) 
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/Prutswonder/go-servicefoundation/blob/master/LICENSE)
 
 > Create new Web Services using convention-based configuration.
