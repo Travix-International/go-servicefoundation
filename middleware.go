@@ -200,7 +200,7 @@ func (m *middlewareWrapperImpl) mergeCORSOptions(options *CORSOptions) *cors.Opt
 			"Access-Control-Allow-Methods",
 			"Access-Control-Max-Age",
 			"Access-Control-Allow-Credentials",
-			"Access-Controll-Allow-Origin"),
+			"Access-Control-Allow-Origin"),
 		MaxAge: options.MaxAge,
 	}
 	return &corsOptions
