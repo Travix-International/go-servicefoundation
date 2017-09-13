@@ -7,12 +7,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCreateRouterFactory(t *testing.T) {
+func TestNewRouterFactory(t *testing.T) {
 	sut := sf.NewRouterFactory()
 
 	assert.NotNil(t, sut)
 
-	actual := sut.CreateRouter()
+	actual := sut.NewRouter()
 
 	assert.NotNil(t, actual)
 }

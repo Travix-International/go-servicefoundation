@@ -9,6 +9,8 @@ import (
 )
 
 type (
+	// WrappedResponseWriter is a wrapper around the http.ResponseWriter and extending it with commonly used writing
+	// methods.
 	WrappedResponseWriter interface {
 		http.ResponseWriter
 		JSON(statusCode int, content interface{})
@@ -27,12 +29,17 @@ type (
 )
 
 const (
-	AcceptHeader      = "Accept"
+	// AcceptHeader is the name of the http Accept header.
+	AcceptHeader = "Accept"
+	// ContentTypeHeader is the name of the http content type header.
 	ContentTypeHeader = "Content-Type"
-	ContentTypeJSON   = "application/json"
-	ContentTypeXML    = "application/xml"
+	// ContentTypeJSON is the value of the http content type header for JSON documents.
+	ContentTypeJSON = "application/json"
+	// ContentTypeXML is the value of the http content type header for XML documents.
+	ContentTypeXML = "application/xml"
 )
 
+// NewWrappedResponseWriter instantiates a new WrappedResponseWriter implementation.
 func NewWrappedResponseWriter(w http.ResponseWriter) WrappedResponseWriter {
 	return &wrappedResponseWriterImpl{ResponseWriter: w, status: http.StatusOK}
 }

@@ -8,45 +8,56 @@ import (
 )
 
 type (
+	// ExitFunc is the function signature for the exit function used by Service.
 	ExitFunc func(int)
 
+	// WrapHandler is an interface for wrapping a Handle with middleware.
 	WrapHandler interface {
 		Wrap(string, string, []Middleware, Handle) httprouter.Handle
 	}
 
+	// RootHandler is an interface to instantiate a new root handler.
 	RootHandler interface {
 		NewRootHandler() Handle
 	}
 
+	// ReadinessHandler is an interface to instantiate a new readiness handler.
 	ReadinessHandler interface {
 		NewReadinessHandler() Handle
 	}
 
+	// LivenessHandler is an interface to instantiate a new liveness handler.
 	LivenessHandler interface {
 		NewLivenessHandler() Handle
 	}
 
+	// HealthHandler is an interface to instantiate a new health handler.
 	HealthHandler interface {
 		NewHealthHandler() Handle
 	}
 
+	// VersionHandler is an interface to instantiate a new version handler.
 	VersionHandler interface {
 		NewVersionHandler() Handle
 	}
 
+	// MetricsHandler is an interface to instantiate a new metrics handler.
 	MetricsHandler interface {
 		NewMetricsHandler() Handle
 	}
 
+	// QuitHandler is an interface to instantiate a new quit handler.
 	QuitHandler interface {
 		NewQuitHandler() Handle
 	}
 
+	// ServiceHandlerFactory is an interface to get access to implemented handlers.
 	ServiceHandlerFactory interface {
 		NewHandlers() *Handlers
 		WrapHandler
 	}
 
+	// Handlers is a struct containing references to handler implementations.
 	Handlers struct {
 		RootHandler      RootHandler
 		ReadinessHandler ReadinessHandler
@@ -65,6 +76,7 @@ type (
 	}
 )
 
+// NewServiceHandlerFactory creates a new factory with handler implementations.
 func NewServiceHandlerFactory(middlewareWrapper MiddlewareWrapper, versionBuilder VersionBuilder,
 	stateReader ServiceStateReader, exitFunc ExitFunc) ServiceHandlerFactory {
 
@@ -78,6 +90,7 @@ func NewServiceHandlerFactory(middlewareWrapper MiddlewareWrapper, versionBuilde
 
 /* ServiceHandlerFactory implementation */
 
+// Wrap wraps the specified Handle with the specified middleware wrappers.
 func (f *serviceHandlerFactoryImpl) Wrap(subsystem, name string, middlewares []Middleware, handle Handle) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		h := handle
@@ -89,6 +102,7 @@ func (f *serviceHandlerFactoryImpl) Wrap(subsystem, name string, middlewares []M
 	}
 }
 
+// NewHandlers instantiates a new Handlers struct containing implemented handlers.
 func (f *serviceHandlerFactoryImpl) NewHandlers() *Handlers {
 	return &Handlers{
 		RootHandler:      f,

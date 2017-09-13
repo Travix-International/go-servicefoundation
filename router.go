@@ -7,18 +7,22 @@ import (
 )
 
 type (
+	// Handle is a function signature for the ServiceFoundation handlers
 	Handle func(WrappedResponseWriter, *http.Request, RouterParams)
 
+	// RouterParams is a struct that wraps httprouter.Params
 	RouterParams struct {
 		Params httprouter.Params
 	}
 
+	// Router is a struct that wraps httprouter.Router
 	Router struct {
 		Router *httprouter.Router
 	}
 
+	// RouterFactory is an interface to create a new Router.
 	RouterFactory interface {
-		CreateRouter() *Router
+		NewRouter() *Router
 	}
 
 	routerFactoryImpl struct {
@@ -26,16 +30,19 @@ type (
 )
 
 var (
-	MethodsForGet  = []string{http.MethodGet}
+	// MethodsForGet contains a slice with the supported http methods for GET.
+	MethodsForGet = []string{http.MethodGet}
+	// MethodsForPost contains a slice with the supported http methods for POST.
 	MethodsForPost = []string{http.MethodPost}
 )
 
+// NewRouterFactory instantiates a new RouterFactory implementation.
 func NewRouterFactory() RouterFactory {
 	return &routerFactoryImpl{}
 }
 
 /* RouterFactory implementation */
 
-func (r *routerFactoryImpl) CreateRouter() *Router {
+func (r *routerFactoryImpl) NewRouter() *Router {
 	return &Router{Router: httprouter.New()}
 }

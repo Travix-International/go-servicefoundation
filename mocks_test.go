@@ -187,7 +187,7 @@ type mockRouterFactory struct {
 	sf.RouterFactory
 }
 
-func (m *mockRouterFactory) CreateRouter() *sf.Router {
+func (m *mockRouterFactory) NewRouter() *sf.Router {
 	a := m.Called()
 	return a.Get(0).(*sf.Router)
 }

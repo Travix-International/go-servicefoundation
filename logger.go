@@ -17,6 +17,7 @@ const (
 )
 
 type (
+	// Logger is a wrapper around the Logger package and extending it with log level filtering and simplified formatting.
 	Logger interface {
 		Debug(event, formatOrMsg string, a ...interface{}) error
 		Info(event, formatOrMsg string, a ...interface{}) error
@@ -37,6 +38,7 @@ var (
 	once            sync.Once
 )
 
+// NewLogger instantiates a new Logger implementation.
 func NewLogger(logMinFilter string) Logger {
 	once.Do(func() {
 		for i, level := range levels {

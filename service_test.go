@@ -57,7 +57,7 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 		Return(wrappedHandle).
 		Twice() // for each route
 	rf.
-		On("CreateRouter").
+		On("NewRouter").
 		Return(router).
 		Times(3) // public, readiness and internal
 
@@ -121,15 +121,15 @@ func TestServiceImpl_Run(t *testing.T) {
 		On("Wrap", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Return(wrappedHandle)
 	rf.
-		On("CreateRouter").
+		On("NewRouter").
 		Return(readinessRouter).
 		Once()
 	rf.
-		On("CreateRouter").
+		On("NewRouter").
 		Return(internalRouter).
 		Once()
 	rf.
-		On("CreateRouter").
+		On("NewRouter").
 		Return(publicRouter).
 		Once()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)

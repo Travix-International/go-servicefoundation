@@ -27,9 +27,10 @@ const (
 )
 
 type (
-	WarmUpFunc   func(log Logger) error
+	// ShutdownFunc is a function signature for the shutdown function.
 	ShutdownFunc func(log Logger)
 
+	// ServiceGlobals contains basic service properties, like name, deployment environment and version number.
 	ServiceGlobals struct {
 		AppName           string
 		ServerName        string
@@ -37,6 +38,8 @@ type (
 		VersionNumber     string
 	}
 
+	// ServiceOptions contains value and references used by the Service implementation. The contents of ServiceOptions
+	// can be used to customize or extend ServiceFoundation.
 	ServiceOptions struct {
 		Globals            ServiceGlobals
 		Port               int
@@ -50,19 +53,19 @@ type (
 		WrapHandler        WrapHandler
 		VersionBuilder     VersionBuilder
 		ServiceStateReader ServiceStateReader
-		WarmupFunc         WarmUpFunc
 		ShutdownFunc       ShutdownFunc
 		ExitFunc           ExitFunc
-		WarmUpTimeout      time.Duration
 		ServerTimeout      time.Duration
 	}
 
+	// ServiceStateReader contains state methods used by the service's handler implementations.
 	ServiceStateReader interface {
 		IsLive() bool
 		IsReady() bool
 		IsHealthy() bool
 	}
 
+	// Service is the main interface for ServiceFoundation and is used to define routing and running the service.
 	Service interface {
 		Run(ctx context.Context)
 		AddRoute(name string, routes []string, methods []string, middlewares []Middleware, handler Handle)
@@ -73,7 +76,6 @@ type (
 
 	serviceImpl struct {
 		globals         ServiceGlobals
-		warmUpTimeout   time.Duration
 		serverTimeout   time.Duration
 		port            int
 		readinessPort   int
@@ -87,7 +89,6 @@ type (
 		wrapHandler     WrapHandler
 		versionBuilder  VersionBuilder
 		stateReader     ServiceStateReader
-		warmUpFunc      WarmUpFunc
 		shutdownFunc    ShutdownFunc
 		exitFunc        ExitFunc
 		quitting        bool
@@ -136,7 +137,6 @@ func NewServiceOptions(name string, allowedMethods []string, shutdownFunc Shutdo
 
 	opt := ServiceOptions{
 		Globals:            globals,
-		WarmUpTimeout:      time.Second * 20,
 		ServerTimeout:      time.Second * 20,
 		Port:               port,
 		ReadinessPort:      port + 1,
@@ -148,7 +148,6 @@ func NewServiceOptions(name string, allowedMethods []string, shutdownFunc Shutdo
 		VersionBuilder:     versionBuilder,
 		ServiceStateReader: stateReader,
 		ExitFunc:           exitFunc,
-		// WarmUpFunc is not provided by default, meaning the service is available instantly
 	}
 	opt.SetHandlers()
 	return opt
@@ -158,28 +157,27 @@ func NewServiceOptions(name string, allowedMethods []string, shutdownFunc Shutdo
 func NewCustomService(options ServiceOptions) Service {
 	return &serviceImpl{
 		globals:         options.Globals,
-		warmUpTimeout:   options.WarmUpTimeout,
 		serverTimeout:   options.ServerTimeout,
 		port:            options.Port,
 		readinessPort:   options.ReadinessPort,
 		internalPort:    options.InternalPort,
 		log:             options.Logger,
 		metrics:         options.Metrics,
-		publicRouter:    options.RouterFactory.CreateRouter(),
-		readinessRouter: options.RouterFactory.CreateRouter(),
-		internalRouter:  options.RouterFactory.CreateRouter(),
+		publicRouter:    options.RouterFactory.NewRouter(),
+		readinessRouter: options.RouterFactory.NewRouter(),
+		internalRouter:  options.RouterFactory.NewRouter(),
 		handlers:        options.Handlers,
 		wrapHandler:     options.WrapHandler,
 		versionBuilder:  options.VersionBuilder,
 		stateReader:     options.ServiceStateReader,
-		warmUpFunc:      options.WarmupFunc,
 		exitFunc:        options.ExitFunc,
 		sendChan:        make(chan bool, 1),
 		receiveChan:     make(chan bool, 1),
 	}
 }
 
-// overwrite the default os.exit() to run delayed, giving the quit handler a chance to return a status
+// NewExitFunc returns a new exit function. It wraps the shutdownFunc and executed an os.exit after the shutdown is
+// completed with a slight delay, giving the quit handler a chance to return a status.
 func NewExitFunc(log Logger, shutdownFunc ShutdownFunc) func(int) {
 	return func(code int) {
 		log.Debug("ServiceExit", "Performing service exit")
@@ -203,6 +201,8 @@ func NewExitFunc(log Logger, shutdownFunc ShutdownFunc) func(int) {
 	}
 }
 
+// NewServiceStateReader instantiates a new basic ServiceStateReader implementation, which always returns true
+// for it's state methods.
 func NewServiceStateReader() ServiceStateReader {
 	return &serviceStateReaderImpl{}
 }
@@ -291,7 +291,7 @@ func (s *serviceImpl) addRoute(router *Router, subsystem, name string, routes []
 	}
 }
 
-func (s *serviceImpl) runHttpServer(port int, router *Router) {
+func (s *serviceImpl) runHTTPServer(port int, router *Router) {
 	addr := fmt.Sprintf(":%v", port)
 	svr := &http.Server{
 		ReadTimeout:  30 * time.Second,
@@ -337,7 +337,7 @@ func (s *serviceImpl) runReadinessServer() {
 
 	s.log.Info("RunReadinessServer", "%s %s running on localhost:%d.", s.globals.AppName, subsystem, s.readinessPort)
 
-	s.runHttpServer(s.readinessPort, router)
+	s.runHTTPServer(s.readinessPort, router)
 }
 
 // RunInternalServer runs the internal service as a go-routine
@@ -353,7 +353,7 @@ func (s *serviceImpl) runInternalServer() {
 
 	s.log.Info("RunInternalServer", "%s %s running on localhost:%d.", s.globals.AppName, subsystem, s.internalPort)
 
-	s.runHttpServer(s.internalPort, router)
+	s.runHTTPServer(s.internalPort, router)
 }
 
 // RunPublicServer runs the public service on the current thread.
@@ -367,5 +367,5 @@ func (s *serviceImpl) runPublicServer() {
 
 	s.log.Info("RunPublicService", "%s %s running on localhost:%d.", s.globals.AppName, publicSubsystem, s.port)
 
-	s.runHttpServer(s.port, router)
+	s.runHTTPServer(s.port, router)
 }

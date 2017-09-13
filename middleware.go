@@ -11,17 +11,25 @@ import (
 )
 
 const (
-	CORS           Middleware = 1
-	NoCaching      Middleware = 2
-	Counter        Middleware = 3
-	Histogram      Middleware = 4
-	PanicTo500     Middleware = 5
+	// CORS is a Middleware enumeration for validating cross-domain requests.
+	CORS Middleware = 1
+	// NoCaching is a middleware enumeration to adding no-caching headers to the response.
+	NoCaching Middleware = 2
+	// Counter is a middleware enumeration to add counter metrics to the current request/response.
+	Counter Middleware = 3
+	// Histogram is a middleware enumeration to add histogram metrics to the current request/response.
+	Histogram Middleware = 4
+	// PanicTo500 is a middleware enumeration to log panics as errors and respond with http status-code 500.
+	PanicTo500 Middleware = 5
+	// RequestLogging is a middleware enumeration to log the incoming request and response times.
 	RequestLogging Middleware = 6
 )
 
 type (
+	// Middleware is an enumeration to indicare the available middleware wrappers.
 	Middleware int
 
+	// MiddlewareWrapper is an interface to wrap an existing handler with the specified middleware.
 	MiddlewareWrapper interface {
 		Wrap(subsystem, name string, middleware Middleware, handler Handle) Handle
 	}
@@ -34,6 +42,7 @@ type middlewareWrapperImpl struct {
 	corsOptions *cors.Options
 }
 
+// NewMiddlewareWrapper instantiates a new MiddelwareWrapper implementation.
 func NewMiddlewareWrapper(logger Logger, metrics Metrics, corsOptions *CORSOptions, globals ServiceGlobals) MiddlewareWrapper {
 	m := &middlewareWrapperImpl{
 		logger:  logger,
