@@ -21,6 +21,11 @@ type (
 		Status() int
 	}
 
+	// ErrorResponse can be used to to send an error response.
+	ErrorResponse struct {
+		Message string
+	}
+
 	wrappedResponseWriterImpl struct {
 		http.ResponseWriter
 		status      int
