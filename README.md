@@ -1,11 +1,11 @@
-# ServiceFoundation [![Build Status](https://travis-ci.org/Prutswonder/go-servicefoundation.svg?branch=master)](https://travis-ci.org/Prutswonder/go-servicefoundation?branch=master)
+# ServiceFoundation [![Build Status](https://travis-ci.org/Travix-International/go-servicefoundation.svg?branch=master)](https://travis-ci.org/Travix-International/go-servicefoundation?branch=master)
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/Prutswonder/go-servicefoundation)](https://goreportcard.com/report/github.com/Prutswonder/go-servicefoundation) [![Coverage Status](https://coveralls.io/repos/github/Prutswonder/go-servicefoundation/badge.svg?branch=master)](https://coveralls.io/github/Prutswonder/go-servicefoundation?branch=master) 
-[![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/Prutswonder/go-servicefoundation/blob/master/LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/Travix-International/go-servicefoundation)](https://goreportcard.com/report/github.com/Travix-International/go-servicefoundation) [![Coverage Status](https://coveralls.io/repos/github/Travix-International/go-servicefoundation/badge.svg?branch=master)](https://coveralls.io/github/Travix-International/go-servicefoundation?branch=master) 
+[![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/Travix-International/go-servicefoundation/blob/master/LICENSE)
 
 > Create new Web Services using convention-based configuration.
 
-More documentation to be found on [GodDoc](https://godoc.org/github.com/Prutswonder/go-servicefoundation).
+More documentation to be found on [GodDoc](https://godoc.org/github.com/Travix-International/go-servicefoundation).
 
 ServiceFoundation enables you to create Web Services containing:
 
@@ -31,7 +31,7 @@ To do:
 Include this package into your project with:
 
 ```
-go get github.com/Prutswonder/go-servicefoundation
+go get github.com/Travix-International/go-servicefoundation
 ```
 
 Although all components can be extended, the easiest way to use ServiceFoundation is to use the boilerplate version:
@@ -43,7 +43,7 @@ import (
 	"context"
 	"net/http"
 
-	sf "github.com/Prutswonder/go-servicefoundation"
+	sf "github.com/Travix-International/go-servicefoundation"
 )
 
 func main() {
@@ -101,7 +101,7 @@ import (
 	"net/http"
 	"time"
 
-	sf "github.com/Prutswonder/go-servicefoundation"
+	sf "github.com/Travix-International/go-servicefoundation"
 )
 
 type CustomServiceStateReader struct {
@@ -150,4 +150,4 @@ func main() {
 ```
 
 
-[![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/Prutswonder/go-servicefoundation/blob/master/LICENSE)
+[![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/Travix-International/go-servicefoundation/blob/master/LICENSE)

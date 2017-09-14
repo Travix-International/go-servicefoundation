@@ -3,7 +3,7 @@ package servicefoundation_test
 import (
 	"testing"
 
-	sf "github.com/Prutswonder/go-servicefoundation"
+	sf "github.com/Travix-International/go-servicefoundation"
 	"github.com/stretchr/testify/assert"
 )
 

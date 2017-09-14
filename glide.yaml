@@ -1,4 +1,4 @@
-package: github.com/Prutswonder/go-servicefoundation
+package: github.com/Travix-International/go-servicefoundation
 import:
 - package: github.com/Travix-International/logger
   version: ~0.5.0

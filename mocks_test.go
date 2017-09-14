@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	sf "github.com/Prutswonder/go-servicefoundation"
+	sf "github.com/Travix-International/go-servicefoundation"
 	"github.com/Travix-International/logger"
 	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/mock"

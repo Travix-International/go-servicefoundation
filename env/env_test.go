@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/Prutswonder/go-servicefoundation/env"
+	"github.com/Travix-International/go-servicefoundation/env"
 	"github.com/stretchr/testify/assert"
 )
 

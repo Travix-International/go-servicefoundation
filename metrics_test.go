@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	sf "github.com/Prutswonder/go-servicefoundation"
+	sf "github.com/Travix-International/go-servicefoundation"
 	"github.com/Travix-International/logger"
 	"github.com/stretchr/testify/assert"
 )

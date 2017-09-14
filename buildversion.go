@@ -3,7 +3,7 @@ package servicefoundation
 import (
 	"fmt"
 
-	"github.com/Prutswonder/go-servicefoundation/env"
+	"github.com/Travix-International/go-servicefoundation/env"
 )
 
 type (

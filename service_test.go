@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Prutswonder/go-servicefoundation"
-	sf "github.com/Prutswonder/go-servicefoundation"
+	"github.com/Travix-International/go-servicefoundation"
+	sf "github.com/Travix-International/go-servicefoundation"
 	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
