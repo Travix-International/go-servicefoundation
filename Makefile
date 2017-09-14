@@ -1,4 +1,4 @@
-COVERALLS_TOKEN := "U1GTs4phjw6ebdzs6SiQ1mzKQB2875zn5"
+COVERALLS_TOKEN := "IVQwNa8dypGgtaLmBkFSoBcRcCl0tlqui"
 GITHUB_API_TOKEN := ""
 VERSION :=""
 APP_NAME := "servicefoundation"
