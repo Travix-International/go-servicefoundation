@@ -46,13 +46,26 @@ import (
 	sf "github.com/Travix-International/go-servicefoundation"
 )
 
+var gitHash, versionNumber, buildDate string
+
 func main() {
-	svc := sf.NewService("HelloWorldService", []string{http.MethodGet},
+	svc := sf.NewService(
+		"HelloWorldService",
+		[]string{http.MethodGet},
 		func(log sf.Logger) {
 			log.Info("GracefulShutdown", "Handling graceful shutdown")
+		},
+		sf.BuildVersion{
+			GitHash:       gitHash,
+			VersionNumber: versionNumber,
+			BuildDate:     buildDate,
 		})
 
-	svc.AddRoute("helloworld", []string{"/helloworld"}, sf.MethodsForGet, sf.DefaultMiddlewares,
+	svc.AddRoute(
+		"helloworld",
+		[]string{"/helloworld"},
+		sf.MethodsForGet,
+		[]sf.Middleware{sf.PanicTo500, sf.CORS, sf.RequestMetrics},
 		func(w sf.WrappedResponseWriter, _ *http.Request, _ sf.RouterParams) {
 			w.JSON(http.StatusOK, "hello world!")
 		})
@@ -71,9 +84,6 @@ The following environment variables are used by ServiceFoundation:
 |APP_NAME          |Name of the application (HelloWorldService)               
 |SERVER_NAME       |Name of the server instance (helloworldservice-1234)      
 |DEPLOY_ENVIRONMENT|Name of the deployment environment (default: staging)     
-|GO_PIPELINE_LABEL |GOCD pipeline version number (default: ?)
-|BUILD_DATE        |Build date (default: ?)
-|GIT_HASH          |Git hash (default: ?)
 
 ## Dependencies
 
@@ -103,6 +113,8 @@ import (
 
 	sf "github.com/Travix-International/go-servicefoundation"
 )
+
+var gitHash, versionNumber, buildDate string
 
 type CustomServiceStateReader struct {
 	sf.ServiceStateReader
@@ -134,13 +146,25 @@ func main() {
 		stateReader.isWarmedUp = true
 	}()
 
-	opt := sf.NewServiceOptions("HelloWorldService", []string{http.MethodGet}, shutdownFn)
+	opt := sf.NewServiceOptions(
+		"HelloWorldService",
+		[]string{http.MethodGet},
+		shutdownFn,
+		sf.BuildVersion{
+			GitHash:       gitHash,
+			VersionNumber: versionNumber,
+			BuildDate:     buildDate,
+		})
 	opt.ServiceStateReader = stateReader
 	opt.SetHandlers() // Required to re-bind the state to the ReadinessHandler
 
 	svc := sf.NewCustomService(opt)
 
-	svc.AddRoute("helloworld", []string{"/helloworld"}, sf.MethodsForGet, sf.DefaultMiddlewares,
+	svc.AddRoute(
+		"helloworld",
+		[]string{"/helloworld"},
+		sf.MethodsForGet,
+		[]sf.Middleware{sf.PanicTo500, sf.CORS, sf.RequestMetrics},
 		func(w sf.WrappedResponseWriter, _ *http.Request, _ sf.RouterParams) {
 			w.JSON(http.StatusOK, "hello world!")
 		})

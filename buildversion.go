@@ -1,10 +1,6 @@
 package servicefoundation
 
-import (
-	"fmt"
-
-	"github.com/Travix-International/go-servicefoundation/env"
-)
+import "fmt"
 
 type (
 	// BuildVersion contains the version and build information of the application.
@@ -25,27 +21,8 @@ type (
 	}
 )
 
-const (
-	unknown = "?"
-)
-
-// NewBuildVersion creates and returns a new BuildVersion based on conventional environment variables.
-func NewBuildVersion() BuildVersion {
-	return BuildVersion{
-		VersionNumber: env.OrDefault("GO_PIPELINE_LABEL", unknown),
-		BuildDate:     env.OrDefault("BUILD_DATE", unknown),
-		GitHash:       env.OrDefault("GIT_HASH", unknown),
-	}
-}
-
-// NewVersionBuilder creates and returns a VersionBuilder based on conventional environment variables.
-func NewVersionBuilder() VersionBuilder {
-	version := NewBuildVersion()
-	return NewCustomVersionBuilder(version)
-}
-
-// NewCustomVersionBuilder creates and returns a VersionBuilder for the given BuildVersion.
-func NewCustomVersionBuilder(version BuildVersion) VersionBuilder {
+// NewVersionBuilder creates and returns a VersionBuilder for the given BuildVersion.
+func NewVersionBuilder(version BuildVersion) VersionBuilder {
 	return &versionBuilderImpl{
 		version: version,
 	}

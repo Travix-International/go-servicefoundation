@@ -7,20 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCreateDefaultVersionBuilder(t *testing.T) {
-	sut := sf.NewVersionBuilder()
-
-	actual := sut.ToString()
-	actualMap := sut.ToMap()
-
-	assert.Equal(t, "version: ? - buildDate: ? - git hash: ?", actual)
-	assert.EqualValues(t, map[string]string{
-		"version":   "?",
-		"buildDate": "?",
-		"gitHash":   "?",
-	}, actualMap)
-}
-
 func TestCreateVersionBuilder(t *testing.T) {
 	version := sf.BuildVersion{
 		BuildDate:     "date",
@@ -28,7 +14,7 @@ func TestCreateVersionBuilder(t *testing.T) {
 		GitHash:       "hash",
 	}
 
-	sut := sf.NewCustomVersionBuilder(version)
+	sut := sf.NewVersionBuilder(version)
 
 	actual := sut.ToString()
 	actualMap := sut.ToMap()

@@ -105,14 +105,14 @@ type (
 var DefaultMiddlewares = []Middleware{PanicTo500, NoCaching}
 
 // NewService creates and returns a Service that uses environment variables for default configuration.
-func NewService(name string, allowedMethods []string, shutdownFunc ShutdownFunc) Service {
-	opt := NewServiceOptions(name, allowedMethods, shutdownFunc)
+func NewService(name string, allowedMethods []string, shutdownFunc ShutdownFunc, version BuildVersion) Service {
+	opt := NewServiceOptions(name, allowedMethods, shutdownFunc, version)
 
 	return NewCustomService(opt)
 }
 
 // NewServiceOptions creates and returns ServiceOptions that use environment variables for default configuration.
-func NewServiceOptions(name string, allowedMethods []string, shutdownFunc ShutdownFunc) ServiceOptions {
+func NewServiceOptions(name string, allowedMethods []string, shutdownFunc ShutdownFunc, version BuildVersion) ServiceOptions {
 	appName := env.OrDefault(envAppName, name)
 	serverName := env.OrDefault(envServerName, name)
 	deployEnvironment := env.OrDefault(envDeployEnvironment, "UNKNOWN")
@@ -122,8 +122,7 @@ func NewServiceOptions(name string, allowedMethods []string, shutdownFunc Shutdo
 	}
 	logger := NewLogger(env.OrDefault(envLogMinFilter, defaultLogMinFilter))
 	metrics := NewMetrics(name, logger)
-	versionBuilder := NewVersionBuilder()
-	version := NewBuildVersion()
+	versionBuilder := NewVersionBuilder(version)
 	globals := ServiceGlobals{
 		AppName:           appName,
 		ServerName:        serverName,
