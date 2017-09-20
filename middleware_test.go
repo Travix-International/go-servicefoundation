@@ -16,6 +16,7 @@ func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
 		sf.Counter,
 		sf.Histogram,
 		sf.RequestLogging,
+		sf.RequestMetrics,
 		sf.PanicTo500,
 	}
 

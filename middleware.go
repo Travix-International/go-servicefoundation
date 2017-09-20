@@ -23,6 +23,8 @@ const (
 	PanicTo500 Middleware = 5
 	// RequestLogging is a middleware enumeration to log the incoming request and response times.
 	RequestLogging Middleware = 6
+	// RequestMetrics is a middleware enumeration to measure the incoming request and response times.
+	RequestMetrics Middleware = 7
 )
 
 type (
@@ -69,6 +71,8 @@ func (m *middlewareWrapperImpl) Wrap(subsystem, name string, middleware Middlewa
 		return m.wrapWithPanicHandler(subsystem, name, handler)
 	case RequestLogging:
 		return m.wrapWithRequestLogging(subsystem, name, handler)
+	case RequestMetrics:
+		return m.wrapWithRequestMetrics(subsystem, name, handler)
 	default:
 		m.logger.Warn("UnhandledMiddleware", "Unhandled middleware: %v", middleware)
 	}
@@ -115,12 +119,26 @@ func (m *middlewareWrapperImpl) wrapWithHistogram(subsystem, name string, handle
 
 func (m *middlewareWrapperImpl) wrapWithRequestLogging(subsystem, name string, handler Handle) Handle {
 	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
-		lcName := strings.ToLower(name)
 		log := m.logger
 		start := time.Now()
 
 		//TODO: Log message for requests
 		//log.Info(fmt.Sprintf("Request-%s", name), "TODO")
+
+		handler(w, r, p)
+
+		elapsedMicroSeconds := time.Since(start).Nanoseconds() / int64(time.Microsecond)
+
+		//TODO: Log message for responses
+		log.Info(fmt.Sprintf("Response-%s", name), "Elapsed (microsec): %d", elapsedMicroSeconds)
+	}
+}
+
+func (m *middlewareWrapperImpl) wrapWithRequestMetrics(subsystem, name string, handler Handle) Handle {
+	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
+		lcName := strings.ToLower(name)
+		start := time.Now()
+
 		m.metrics.CountLabels("", "http_requests_total", "Total requests.",
 			[]string{"app", "server", "env", "code", "method", "handler", "version", "subsystem"},
 			[]string{
@@ -141,13 +159,9 @@ func (m *middlewareWrapperImpl) wrapWithRequestLogging(subsystem, name string, h
 
 		handler(w, r, p)
 
-		elapsedMicroSeconds := time.Since(start).Nanoseconds() / int64(time.Microsecond)
-
 		histMicroSeconds.RecordDuration(start, time.Microsecond)
 		histSeconds.RecordTimeElapsed(start)
 
-		//TODO: Log message for responses
-		log.Info(fmt.Sprintf("Response-%s", name), "Elapsed (microsec): %d", elapsedMicroSeconds)
 		m.metrics.CountLabels("", "http_responses_total", "Total responses.",
 			[]string{"app", "server", "env", "code", "method", "handler", "version", "subsystem"},
 			[]string{

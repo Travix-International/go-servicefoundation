@@ -102,7 +102,7 @@ type (
 )
 
 // DefaultMiddlewares contains the default middleware wrappers for the predefined service endpoints.
-var DefaultMiddlewares = []Middleware{PanicTo500, RequestLogging, NoCaching}
+var DefaultMiddlewares = []Middleware{PanicTo500, NoCaching}
 
 // NewService creates and returns a Service that uses environment variables for default configuration.
 func NewService(name string, allowedMethods []string, shutdownFunc ShutdownFunc) Service {
