@@ -8,14 +8,14 @@ DEPLOY_ENVIRONMENT := "staging"
 cover-remote:
 	go get -u github.com/golang/lint/golint
 	go get -u github.com/mattn/goveralls
-	go get -u github.com/Masterminds/glide
-	glide install
+	go get -u github.com/golang/dep/cmd/dep
+	dep ensure
 	go test -covermode=count -coverprofile=cover.tmp
 	goveralls -service travis-ci -coverprofile cover.tmp
 
 run-tests:
-	go get -u github.com/Masterminds/glide
-	glide install
+	go get -u github.com/golang/dep/cmd/dep
+	dep ensure
 	go test -cover `go list ./... | grep -v /vendor/`
 
 cover:

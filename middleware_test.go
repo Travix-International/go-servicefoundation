@@ -38,7 +38,8 @@ func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
 
 		w.On("Header").Return(http.Header{})
 		w.On("Status").Return(http.StatusOK)
-		h.On("RecordTimeElapsed", mock.Anything, mock.Anything)
+		h.On("RecordTimeElapsed", mock.Anything)
+		h.On("RecordDuration", mock.Anything, mock.Anything)
 		m.On("CountLabels", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 		m.On("AddHistogram", mock.Anything, mock.Anything, mock.Anything).Return(h)
 		log.On("Info", mock.Anything, mock.Anything, mock.Anything).Return(nil)

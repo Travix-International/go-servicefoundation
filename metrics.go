@@ -9,7 +9,8 @@ import (
 type (
 	// MetricsHistogram is a wrapper around the MetricsHistogram from the go-metrics package.
 	MetricsHistogram interface {
-		RecordTimeElapsed(start time.Time, unit time.Duration)
+		RecordTimeElapsed(start time.Time)
+		RecordDuration(start time.Time, unit time.Duration)
 	}
 
 	// Metrics is a wrapper around the Metrics from the go-metrics package.
@@ -40,9 +41,12 @@ func NewMetrics(namespace string, logger Logger) Metrics {
 
 /* MetricsHistogram implementation */
 
-func (h *metricsHistogramImpl) RecordTimeElapsed(start time.Time, unit time.Duration) {
-	//TODO: Add unit as parameter to the go-metrics package
+func (h *metricsHistogramImpl) RecordTimeElapsed(start time.Time) {
 	h.histogram.RecordTimeElapsed(start)
+}
+
+func (h *metricsHistogramImpl) RecordDuration(start time.Time, unit time.Duration) {
+	h.histogram.RecordDuration(start, unit)
 }
 
 /* Metrics implementation */

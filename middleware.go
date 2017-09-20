@@ -109,7 +109,7 @@ func (m *middlewareWrapperImpl) wrapWithHistogram(subsystem, name string, handle
 
 		handler(w, r, p)
 
-		hist.RecordTimeElapsed(start, time.Second)
+		hist.RecordTimeElapsed(start)
 	}
 }
 
@@ -143,9 +143,8 @@ func (m *middlewareWrapperImpl) wrapWithRequestLogging(subsystem, name string, h
 
 		elapsedMicroSeconds := time.Since(start).Nanoseconds() / int64(time.Microsecond)
 
-		//TODO: Histograms are always measured in seconds and Summaries in milliseconds. This should be made configurable in go-metrics:
-		histMicroSeconds.RecordTimeElapsed(start, time.Second)
-		histSeconds.RecordTimeElapsed(start, time.Microsecond)
+		histMicroSeconds.RecordDuration(start, time.Microsecond)
+		histSeconds.RecordTimeElapsed(start)
 
 		//TODO: Log message for responses
 		log.Info(fmt.Sprintf("Response-%s", name), "Elapsed (microsec): %d", elapsedMicroSeconds)

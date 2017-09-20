@@ -126,7 +126,11 @@ type (
 	}
 )
 
-func (m *mockMetricsHistogram) RecordTimeElapsed(start time.Time, unit time.Duration) {
+func (m *mockMetricsHistogram) RecordTimeElapsed(start time.Time) {
+	m.Called(start)
+}
+
+func (m *mockMetricsHistogram) RecordDuration(start time.Time, unit time.Duration) {
 	m.Called(start, unit)
 }
 
