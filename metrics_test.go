@@ -19,7 +19,7 @@ func TestMetricsImpl(t *testing.T) {
 	// Act
 	sut.Count("sub", "count", "help")
 	sut.IncreaseCounter("sub", "inc", "help", 5)
-	sut.CountLabels("sub", "lbl", "help", []string{"a", "b", "c"}, []string{"1", "2", "3"})
+	sut.CountLabels("", "lbl", "help", []string{"a", "b", "c"}, []string{"1", "2", "3"})
 	sut.SetGauge(float64(55), "sub", "gauge", "help")
 	h := sut.AddHistogram("sub", "hist", "help")
 	h.RecordTimeElapsed(time.Now())

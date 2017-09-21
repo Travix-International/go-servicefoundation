@@ -1,6 +1,7 @@
 package servicefoundation
 
 import (
+	"strings"
 	"time"
 
 	"github.com/Travix-International/go-metrics"
@@ -27,15 +28,18 @@ type (
 	}
 
 	metricsImpl struct {
-		metrics *metrics.Metrics
+		internalMetrics *metrics.Metrics
+		externalMetrics *metrics.Metrics
 	}
 )
 
 // NewMetrics instantiates a new Metrics implementation.
 func NewMetrics(namespace string, logger Logger) Metrics {
+	log := logger.GetLogger()
+
 	return &metricsImpl{
-		// We're not using the namespace in metrics, because we won't be able to write "basic" metrics.
-		metrics: metrics.NewMetrics("", logger.GetLogger()),
+		internalMetrics: metrics.NewMetrics("", log),
+		externalMetrics: metrics.NewMetrics(strings.ToLower(namespace), log),
 	}
 }
 
@@ -52,21 +56,28 @@ func (h *metricsHistogramImpl) RecordDuration(start time.Time, unit time.Duratio
 /* Metrics implementation */
 
 func (m *metricsImpl) Count(subsystem, name, help string) {
-	m.metrics.Count(subsystem, name, help)
+	m.getMetrics(subsystem).Count(subsystem, name, help)
 }
 
 func (m *metricsImpl) SetGauge(value float64, subsystem, name, help string) {
-	m.metrics.SetGauge(value, subsystem, name, help)
+	m.getMetrics(subsystem).SetGauge(value, subsystem, name, help)
 }
 
 func (m *metricsImpl) CountLabels(subsystem, name, help string, labels, values []string) {
-	m.metrics.CountLabels(subsystem, name, help, labels, values)
+	m.getMetrics(subsystem).CountLabels(subsystem, name, help, labels, values)
 }
 
 func (m *metricsImpl) IncreaseCounter(subsystem, name, help string, increment int) {
-	m.metrics.IncreaseCounter(subsystem, name, help, increment)
+	m.getMetrics(subsystem).IncreaseCounter(subsystem, name, help, increment)
 }
 
 func (m *metricsImpl) AddHistogram(subsystem, name, help string) MetricsHistogram {
-	return &metricsHistogramImpl{m.metrics.AddHistogram(subsystem, name, help)}
+	return &metricsHistogramImpl{m.getMetrics(subsystem).AddHistogram(subsystem, name, help)}
+}
+
+func (m *metricsImpl) getMetrics(subsystem string) *metrics.Metrics {
+	if subsystem == "" {
+		return m.internalMetrics
+	}
+	return m.externalMetrics
 }
