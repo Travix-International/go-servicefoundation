@@ -81,23 +81,11 @@ func (m *middlewareWrapperImpl) Wrap(subsystem, name string, middleware Middlewa
 
 func (m *middlewareWrapperImpl) wrapWithCounter(subsystem, name string, handler Handle) Handle {
 	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
-		lcName := strings.ToLower(name)
-		counterName := fmt.Sprintf("%v_total", lcName)
+		counterName := fmt.Sprintf("%v_total", strings.ToLower(name))
 		counterHelp := fmt.Sprintf("Totals for %v.", name)
+		labels, values := m.getLabelsAndValues(subsystem, name, w, r)
 
-		m.metrics.CountLabels("", counterName, counterHelp,
-			[]string{"app", "server", "env", "code", "method", "handler", "version", "subsystem"},
-			[]string{
-				m.globals.AppName,
-				m.globals.ServerName,
-				m.globals.DeployEnvironment,
-				strconv.Itoa(w.Status()),
-				strings.ToLower(r.Method),
-				lcName,
-				m.globals.VersionNumber,
-				subsystem,
-			},
-		)
+		m.metrics.CountLabels("", counterName, counterHelp, labels, values)
 
 		handler(w, r, p)
 	}
@@ -108,7 +96,8 @@ func (m *middlewareWrapperImpl) wrapWithHistogram(subsystem, name string, handle
 		histogramName := fmt.Sprintf("%v_duration_milliseconds", strings.ToLower(name))
 		histogramHelp := fmt.Sprintf("Response times for %v in milliseconds.", name)
 
-		hist := m.metrics.AddHistogram(subsystem, histogramName, histogramHelp)
+		labels, values := m.getLabelsAndValues(subsystem, name, w, r)
+		hist := m.metrics.AddHistogramVec(subsystem, histogramName, histogramHelp, labels, values)
 		start := time.Now()
 
 		handler(w, r, p)
@@ -134,47 +123,40 @@ func (m *middlewareWrapperImpl) wrapWithRequestLogging(subsystem, name string, h
 	}
 }
 
+func (m *middlewareWrapperImpl) getLabelsAndValues(subsystem, name string, w WrappedResponseWriter,
+	r *http.Request) ([]string, []string) {
+	return []string{"app", "server", "env", "code", "method", "handler", "version", "subsystem"},
+		[]string{
+			m.globals.AppName,
+			m.globals.ServerName,
+			m.globals.DeployEnvironment,
+			strconv.Itoa(w.Status()),
+			strings.ToLower(r.Method),
+			strings.ToLower(name),
+			m.globals.VersionNumber,
+			subsystem,
+		}
+}
+
 func (m *middlewareWrapperImpl) wrapWithRequestMetrics(subsystem, name string, handler Handle) Handle {
 	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
-		lcName := strings.ToLower(name)
+		labels, values := m.getLabelsAndValues(subsystem, name, w, r)
 		start := time.Now()
 
-		m.metrics.CountLabels("", "http_requests_total", "Total requests.",
-			[]string{"app", "server", "env", "code", "method", "handler", "version", "subsystem"},
-			[]string{
-				m.globals.AppName,
-				m.globals.ServerName,
-				m.globals.DeployEnvironment,
-				strconv.Itoa(w.Status()),
-				strings.ToLower(r.Method),
-				lcName,
-				m.globals.VersionNumber,
-				subsystem,
-			},
-		)
-		histSeconds := m.metrics.AddHistogram("", "http_request_duration_seconds",
-			"Response times for requests in seconds.")
-		histMicroSeconds := m.metrics.AddHistogram("", "http_request_duration_microseconds",
-			"Response times for requests in microseconds.")
+		histSeconds := m.metrics.AddHistogramVec("", "http_request_duration_seconds",
+			"Response times for requests in seconds.", labels, values)
+		sumMicroSeconds := m.metrics.AddSummaryVec("", "http_request_duration_microseconds",
+			"Response times for requests in microseconds.", labels, values)
+
+		m.metrics.CountLabels("", "http_requests_total", "Total requests.", labels, values)
 
 		handler(w, r, p)
 
-		histMicroSeconds.RecordDuration(start, time.Microsecond)
-		histSeconds.RecordTimeElapsed(start)
+		sumMicroSeconds.RecordDuration(start, time.Microsecond)
+		histSeconds.RecordDuration(start, time.Second)
 
-		m.metrics.CountLabels("", "http_responses_total", "Total responses.",
-			[]string{"app", "server", "env", "code", "method", "handler", "version", "subsystem"},
-			[]string{
-				m.globals.AppName,
-				m.globals.ServerName,
-				m.globals.DeployEnvironment,
-				strconv.Itoa(w.Status()),
-				strings.ToLower(r.Method),
-				lcName,
-				m.globals.VersionNumber,
-				subsystem,
-			},
-		)
+		labels, values = m.getLabelsAndValues(subsystem, name, w, r)
+		m.metrics.CountLabels("", "http_responses_total", "Total responses.", labels, values)
 	}
 }
 

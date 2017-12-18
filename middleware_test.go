@@ -33,7 +33,8 @@ func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
 		rdr := &mockReader{}
 		r, _ := http.NewRequest("GET", "https://www.sf.com/some/url", rdr)
 		w := &mockResponseWriter{}
-		h := &mockMetricsHistogram{}
+		h := &mockHistogramVec{}
+		s := &mockSummaryVec{}
 		p := sf.RouterParams{}
 		sut := sf.NewMiddlewareWrapper(log, m, corsOptions, sf.ServiceGlobals{})
 
@@ -41,8 +42,10 @@ func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
 		w.On("Status").Return(http.StatusOK)
 		h.On("RecordTimeElapsed", mock.Anything)
 		h.On("RecordDuration", mock.Anything, mock.Anything)
+		s.On("RecordDuration", mock.Anything, mock.Anything)
 		m.On("CountLabels", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
-		m.On("AddHistogram", mock.Anything, mock.Anything, mock.Anything).Return(h)
+		m.On("AddHistogramVec", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(h)
+		m.On("AddSummaryVec", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(s)
 		log.On("Info", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		// Act

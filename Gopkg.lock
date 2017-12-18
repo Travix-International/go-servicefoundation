@@ -4,14 +4,14 @@
 [[projects]]
   name = "github.com/Travix-International/go-metrics"
   packages = ["."]
-  revision = "812b72ed0b70e13b82d20e4db3a2b18cbc39130b"
-  version = "v1.1.0"
+  revision = "8ab8f3ec51c53a884a488c71816c6e56829ec843"
+  version = "v1.5.0"
 
 [[projects]]
   name = "github.com/Travix-International/logger"
   packages = ["."]
-  revision = "aba10dbc638a4a1bf04775f8ad6804282c95ecc5"
-  version = "v0.5.0"
+  revision = "509996f71acd7c13931daff8f104ef1552694df9"
+  version = "v0.6.0"
 
 [[projects]]
   branch = "master"
@@ -29,7 +29,7 @@
   branch = "master"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
-  revision = "ae59567b9aab61b50b2590679a62c3c044030b61"
+  revision = "1643683e1b54a9e88ad26d98f81400c8c9d9f4f9"
 
 [[projects]]
   name = "github.com/julienschmidt/httprouter"
@@ -65,13 +65,13 @@
   branch = "master"
   name = "github.com/prometheus/common"
   packages = ["expfmt","internal/bitbucket.org/ww/goautoneg","model"]
-  revision = "2f17f4a9d485bf34b4bfaccc273805040e4f86c8"
+  revision = "e3fb1a1acd7605367a2b378bc2e2f893c05174b7"
 
 [[projects]]
   branch = "master"
   name = "github.com/prometheus/procfs"
   packages = [".","xfs"]
-  revision = "e645f4e5aaa8506fc71d6edbc5c4ff02c04c46f2"
+  revision = "a6e9df898b1336106c743392c48ee0b71f5c4efa"
 
 [[projects]]
   name = "github.com/rs/cors"
@@ -95,11 +95,11 @@
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context"]
-  revision = "8351a756f30f1297fe94bbf4b767ec589c6ea6d0"
+  revision = "a337091b0525af65de94df2eb7e98bd9962dcbe2"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "8f97f3dbcf0f53e057f930b8ef9843730a733c66c66e07b2eee33a2674539d2f"
+  inputs-digest = "f38ad8a1b5e03e0fc0e4eca0510f3fd2a2be5eaea28a33467a43723e58aa3e2a"
   solver-name = "gps-cdcl"
   solver-version = 1

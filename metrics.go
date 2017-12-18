@@ -8,8 +8,14 @@ import (
 )
 
 type (
-	// MetricsHistogram is a wrapper around the MetricsHistogram from the go-metrics package.
-	MetricsHistogram interface {
+	// HistogramVec is a wrapper around the HistogramVec from the go-metrics package.
+	HistogramVec interface {
+		RecordTimeElapsed(start time.Time)
+		RecordDuration(start time.Time, unit time.Duration)
+	}
+
+	// SummaryVec is a wrapper around the v from the go-metrics package.
+	SummaryVec interface {
 		RecordTimeElapsed(start time.Time)
 		RecordDuration(start time.Time, unit time.Duration)
 	}
@@ -20,11 +26,16 @@ type (
 		SetGauge(value float64, subsystem, name, help string)
 		CountLabels(subsystem, name, help string, labels, values []string)
 		IncreaseCounter(subsystem, name, help string, increment int)
-		AddHistogram(subsystem, name, help string) MetricsHistogram
+		AddHistogramVec(subsystem, name, help string, labels, labelValues []string) HistogramVec
+		AddSummaryVec(subsystem, name, help string, labels, labelValues []string) SummaryVec
 	}
 
-	metricsHistogramImpl struct {
-		histogram *metrics.MetricsHistogram
+	histogramVecImpl struct {
+		histogramVec *metrics.HistogramVec
+	}
+
+	summaryVecImpl struct {
+		summaryVec *metrics.SummaryVec
 	}
 
 	metricsImpl struct {
@@ -43,14 +54,24 @@ func NewMetrics(namespace string, logger Logger) Metrics {
 	}
 }
 
-/* MetricsHistogram implementation */
+/* HistogramVec implementation */
 
-func (h *metricsHistogramImpl) RecordTimeElapsed(start time.Time) {
-	h.histogram.RecordTimeElapsed(start)
+func (h *histogramVecImpl) RecordTimeElapsed(start time.Time) {
+	h.histogramVec.RecordTimeElapsed(start)
 }
 
-func (h *metricsHistogramImpl) RecordDuration(start time.Time, unit time.Duration) {
-	h.histogram.RecordDuration(start, unit)
+func (h *histogramVecImpl) RecordDuration(start time.Time, unit time.Duration) {
+	h.histogramVec.RecordDuration(start, unit)
+}
+
+/* SummaryVec implementation */
+
+func (s *summaryVecImpl) RecordTimeElapsed(start time.Time) {
+	s.summaryVec.RecordTimeElapsed(start)
+}
+
+func (s *summaryVecImpl) RecordDuration(start time.Time, unit time.Duration) {
+	s.summaryVec.RecordDuration(start, unit)
 }
 
 /* Metrics implementation */
@@ -71,8 +92,12 @@ func (m *metricsImpl) IncreaseCounter(subsystem, name, help string, increment in
 	m.getMetrics(subsystem).IncreaseCounter(subsystem, name, help, increment)
 }
 
-func (m *metricsImpl) AddHistogram(subsystem, name, help string) MetricsHistogram {
-	return &metricsHistogramImpl{m.getMetrics(subsystem).AddHistogram(subsystem, name, help)}
+func (m *metricsImpl) AddHistogramVec(subsystem, name, help string, labels, labelValues []string) HistogramVec {
+	return &histogramVecImpl{m.getMetrics(subsystem).AddHistogramVec(subsystem, name, help, labels, labelValues)}
+}
+
+func (m *metricsImpl) AddSummaryVec(subsystem, name, help string, labels, labelValues []string) SummaryVec {
+	return &summaryVecImpl{m.getMetrics(subsystem).AddSummaryVec(subsystem, name, help, labels, labelValues)}
 }
 
 func (m *metricsImpl) getMetrics(subsystem string) *metrics.Metrics {

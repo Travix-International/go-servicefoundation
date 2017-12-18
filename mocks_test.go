@@ -120,17 +120,30 @@ type (
 		sf.Metrics
 	}
 
-	mockMetricsHistogram struct {
+	mockHistogramVec struct {
 		mock.Mock
-		sf.MetricsHistogram
+		sf.HistogramVec
+	}
+
+	mockSummaryVec struct {
+		mock.Mock
+		sf.SummaryVec
 	}
 )
 
-func (m *mockMetricsHistogram) RecordTimeElapsed(start time.Time) {
+func (m *mockHistogramVec) RecordTimeElapsed(start time.Time) {
 	m.Called(start)
 }
 
-func (m *mockMetricsHistogram) RecordDuration(start time.Time, unit time.Duration) {
+func (m *mockHistogramVec) RecordDuration(start time.Time, unit time.Duration) {
+	m.Called(start, unit)
+}
+
+func (m *mockSummaryVec) RecordTimeElapsed(start time.Time) {
+	m.Called(start)
+}
+
+func (m *mockSummaryVec) RecordDuration(start time.Time, unit time.Duration) {
 	m.Called(start, unit)
 }
 
@@ -150,9 +163,14 @@ func (m *mockMetrics) IncreaseCounter(subsystem, name, help string, increment in
 	m.Called(subsystem, name, help, increment)
 }
 
-func (m *mockMetrics) AddHistogram(subsystem, name, help string) sf.MetricsHistogram {
-	a := m.Called(subsystem, name, help)
-	return a.Get(0).(sf.MetricsHistogram)
+func (m *mockMetrics) AddHistogramVec(subsystem, name, help string, labels, labelValues []string) sf.HistogramVec {
+	a := m.Called(subsystem, name, help, labels, labelValues)
+	return a.Get(0).(sf.HistogramVec)
+}
+
+func (m *mockMetrics) AddSummaryVec(subsystem, name, help string, labels, labelValues []string) sf.SummaryVec {
+	a := m.Called(subsystem, name, help, labels, labelValues)
+	return a.Get(0).(sf.SummaryVec)
 }
 
 /* sf.VersionBuilder mock */

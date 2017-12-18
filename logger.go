@@ -42,8 +42,8 @@ var (
 func NewLogger(logMinFilter string) Logger {
 	once.Do(func() {
 		for i, level := range levels {
-			log := logger.New()
-			consoleLogFormat := logger.NewStringFormat("[%s] ", "[%s] ", "%s\n", " (%s=", "%s)")
+			log, _ := logger.New(make(map[string]string))
+			consoleLogFormat := logger.NewStringFormat("[%s] ", "[%s] ", "%s\n", " (%s=", "%s)", "")
 			consoleTransport := logger.NewTransport(os.Stdout, consoleLogFormat)
 			log.AddTransport(consoleTransport)
 
