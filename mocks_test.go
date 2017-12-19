@@ -80,6 +80,18 @@ func (m *mockReader) Close() error {
 	return a.Error(0)
 }
 
+/* sf.LogFactory mock */
+
+type mockLogFactory struct {
+	mock.Mock
+	sf.LogFactory
+}
+
+func (m *mockLogFactory) NewLogger(meta map[string]string) sf.Logger {
+	i := m.Called(meta)
+	return i.Get(0).(sf.Logger)
+}
+
 /* sf.Logger mock */
 
 type mockLogger struct {

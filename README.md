@@ -5,7 +5,7 @@
 
 > Create new Web Services using convention-based configuration.
 
-More documentation to be found on [GodDoc](https://godoc.org/github.com/Travix-International/go-servicefoundation).
+More documentation to be found on [GoDoc](https://godoc.org/github.com/Travix-International/go-servicefoundation).
 
 ServiceFoundation enables you to create Web Services containing:
 

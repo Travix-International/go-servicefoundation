@@ -13,15 +13,15 @@ import (
 )
 
 const (
-	envCORSOrigins       string = "CORS_ORIGINS"
-	envHTTPpPort         string = "HTTPPORT"
-	envLogMinFilter      string = "LOG_MINFILTER"
-	envAppName           string = "APP_NAME"
-	envServerName        string = "SERVER_NAME"
-	envDeployEnvironment string = "DEPLOY_ENVIRONMENT"
+	envCORSOrigins       = "CORS_ORIGINS"
+	envHTTPpPort         = "HTTPPORT"
+	envLogMinFilter      = "LOG_MINFILTER"
+	envAppName           = "APP_NAME"
+	envServerName        = "SERVER_NAME"
+	envDeployEnvironment = "DEPLOY_ENVIRONMENT"
 
-	defaultHTTPPort     int    = 8080
-	defaultLogMinFilter string = "Warning"
+	defaultHTTPPort     = 8080
+	defaultLogMinFilter = "Warning"
 
 	publicSubsystem = "public"
 )
@@ -45,7 +45,7 @@ type (
 		Port               int
 		ReadinessPort      int
 		InternalPort       int
-		Logger             Logger
+		LogFactory         LogFactory
 		Metrics            Metrics
 		RouterFactory      RouterFactory
 		MiddlewareWrapper  MiddlewareWrapper
@@ -80,6 +80,7 @@ type (
 		port            int
 		readinessPort   int
 		internalPort    int
+		logFactory      LogFactory
 		log             Logger
 		metrics         Metrics
 		publicRouter    *Router
@@ -94,10 +95,6 @@ type (
 		quitting        bool
 		sendChan        chan bool
 		receiveChan     chan bool
-	}
-
-	serverInstance struct {
-		shutdownChan chan bool
 	}
 )
 
@@ -120,7 +117,8 @@ func NewServiceOptions(name string, allowedMethods []string, shutdownFunc Shutdo
 		AllowedOrigins: env.ListOrDefault(envCORSOrigins, []string{"*"}),
 		AllowedMethods: allowedMethods,
 	}
-	logger := NewLogger(env.OrDefault(envLogMinFilter, defaultLogMinFilter))
+	logFactory := NewLogFactory(env.OrDefault(envLogMinFilter, defaultLogMinFilter))
+	logger := logFactory.NewLogger(make(map[string]string))
 	metrics := NewMetrics(name, logger)
 	versionBuilder := NewVersionBuilder(version)
 	globals := ServiceGlobals{
@@ -142,7 +140,7 @@ func NewServiceOptions(name string, allowedMethods []string, shutdownFunc Shutdo
 		InternalPort:       port + 2,
 		MiddlewareWrapper:  middlewareWrapper,
 		RouterFactory:      NewRouterFactory(),
-		Logger:             logger,
+		LogFactory:         logFactory,
 		Metrics:            metrics,
 		VersionBuilder:     versionBuilder,
 		ServiceStateReader: stateReader,
@@ -160,7 +158,8 @@ func NewCustomService(options ServiceOptions) Service {
 		port:            options.Port,
 		readinessPort:   options.ReadinessPort,
 		internalPort:    options.InternalPort,
-		log:             options.Logger,
+		logFactory:      options.LogFactory,
+		log:             options.LogFactory.NewLogger(make(map[string]string)),
 		metrics:         options.Metrics,
 		publicRouter:    options.RouterFactory.NewRouter(),
 		readinessRouter: options.RouterFactory.NewRouter(),
