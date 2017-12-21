@@ -146,11 +146,11 @@ func (m *middlewareWrapperImpl) getRequestEndMessage(w WrappedResponseWriter, r 
 
 func (m *middlewareWrapperImpl) getMetaLog(subsystem, name string, w WrappedResponseWriter, r *http.Request, p RouterParams, meta map[string]string) Logger {
 	m.addMetaEntry(meta, "http.method", r.Method)
-	m.addMetaEntry(meta, "http.url", r.RequestURI)
+	m.addMetaEntry(meta, "http.host", r.Host)
 	m.addMetaEntry(meta, "request", fmt.Sprintf("%s %s", r.Method, r.RequestURI))
 
 	if r.URL != nil {
-		m.addMetaEntry(meta, "http.host", r.URL.Hostname())
+		m.addMetaEntry(meta, "http.url", fmt.Sprintf("%s//%s%s", r.URL.Scheme, r.Host, r.RequestURI))
 		m.addMetaEntry(meta, "http.query", r.URL.RawQuery)
 		m.addMetaEntry(meta, "http.route", r.URL.RawPath)
 	}
@@ -159,7 +159,7 @@ func (m *middlewareWrapperImpl) getMetaLog(subsystem, name string, w WrappedResp
 		m.addMetaEntry(meta, "statuscode", strconv.Itoa(w.Status()))
 
 		for key := range w.Header() {
-			m.addMetaEntry(meta, "header."+strings.ToLower(key), w.Header().Get(key))
+			m.addMetaEntry(meta, "http.header."+strings.ToLower(key), w.Header().Get(key))
 		}
 	}
 
