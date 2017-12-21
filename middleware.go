@@ -114,7 +114,7 @@ func (m *middlewareWrapperImpl) wrapWithRequestLogging(subsystem, name string, h
 		start := time.Now()
 
 		log := m.getMetaLog(subsystem, name, nil, r, p, meta)
-		log.Info("ApiRequest", m.getRequestStartMessage(r, p))
+		log.Info("ApiRequest", m.getRequestStartMessage(r, p, meta))
 
 		handler(w, r, p)
 
@@ -123,21 +123,21 @@ func (m *middlewareWrapperImpl) wrapWithRequestLogging(subsystem, name string, h
 
 		meta["entry.duration"] = durationMs
 		log = m.getMetaLog(subsystem, name, w, r, p, meta)
-		log.Info("ApiResponse", m.getRequestEndMessage(w, r, p, durationMs))
+		log.Info("ApiResponse", m.getRequestEndMessage(w, r, p, meta, durationMs))
 	}
 }
 
-func (m *middlewareWrapperImpl) getRequestStartMessage(r *http.Request, p RouterParams) string {
-	return fmt.Sprintf("%s %s", r.Method, r.RequestURI)
+func (m *middlewareWrapperImpl) getRequestStartMessage(r *http.Request, p RouterParams, meta map[string]string) string {
+	return fmt.Sprintf("%s %s", r.Method, meta["entry.http.url"])
 }
 
-func (m *middlewareWrapperImpl) getRequestEndMessage(w WrappedResponseWriter, r *http.Request, p RouterParams, durationMs string) string {
+func (m *middlewareWrapperImpl) getRequestEndMessage(w WrappedResponseWriter, r *http.Request, p RouterParams, meta map[string]string, durationMs string) string {
 	status := strconv.Itoa(w.Status())
 	contentType := w.Header().Get("content-type")
 
 	return fmt.Sprintf("%s %s finished. Duration: %sms. Status: %s, ContentType: %s",
 		r.Method,
-		r.RequestURI,
+		meta["entry.http.url"],
 		durationMs,
 		status,
 		contentType,
@@ -147,7 +147,8 @@ func (m *middlewareWrapperImpl) getRequestEndMessage(w WrappedResponseWriter, r 
 func (m *middlewareWrapperImpl) getMetaLog(subsystem, name string, w WrappedResponseWriter, r *http.Request, p RouterParams, meta map[string]string) Logger {
 	m.addMetaEntry(meta, "http.method", r.Method)
 	m.addMetaEntry(meta, "http.host", r.Host)
-	m.addMetaEntry(meta, "request", fmt.Sprintf("%s %s", r.Method, r.RequestURI))
+
+	url := r.RequestURI
 
 	if r.URL != nil {
 		scheme := "http"
@@ -156,10 +157,14 @@ func (m *middlewareWrapperImpl) getMetaLog(subsystem, name string, w WrappedResp
 		} else if r.TLS != nil {
 			scheme = "https"
 		}
-		m.addMetaEntry(meta, "http.url", fmt.Sprintf("%s://%s%s", scheme, r.Host, r.RequestURI))
+		url = fmt.Sprintf("%s://%s%s", scheme, r.Host, r.RequestURI)
+		m.addMetaEntry(meta, "http.url", url)
 		m.addMetaEntry(meta, "http.query", r.URL.RawQuery)
 		m.addMetaEntry(meta, "http.route", r.URL.RawPath)
+		m.addMetaEntry(meta, "http.scheme", scheme)
 	}
+
+	m.addMetaEntry(meta, "request", fmt.Sprintf("%s %s", r.Method, url))
 
 	if w != nil {
 		m.addMetaEntry(meta, "statuscode", strconv.Itoa(w.Status()))
