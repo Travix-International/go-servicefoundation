@@ -33,6 +33,7 @@ type (
 	// ServiceGlobals contains basic service properties, like name, deployment environment and version number.
 	ServiceGlobals struct {
 		AppName           string
+		GroupName         string
 		ServerName        string
 		DeployEnvironment string
 		VersionNumber     string
@@ -102,16 +103,16 @@ type (
 var DefaultMiddlewares = []Middleware{PanicTo500, NoCaching}
 
 // NewService creates and returns a Service that uses environment variables for default configuration.
-func NewService(name string, allowedMethods []string, shutdownFunc ShutdownFunc, version BuildVersion,
+func NewService(group, name string, allowedMethods []string, shutdownFunc ShutdownFunc, version BuildVersion,
 	meta map[string]string) Service {
 
-	opt := NewServiceOptions(name, allowedMethods, shutdownFunc, version, meta)
+	opt := NewServiceOptions(group, name, allowedMethods, shutdownFunc, version, meta)
 
 	return NewCustomService(opt)
 }
 
 // NewServiceOptions creates and returns ServiceOptions that use environment variables for default configuration.
-func NewServiceOptions(name string, allowedMethods []string, shutdownFunc ShutdownFunc, version BuildVersion,
+func NewServiceOptions(group, name string, allowedMethods []string, shutdownFunc ShutdownFunc, version BuildVersion,
 	meta map[string]string) ServiceOptions {
 
 	appName := env.OrDefault(envAppName, name)
@@ -121,16 +122,18 @@ func NewServiceOptions(name string, allowedMethods []string, shutdownFunc Shutdo
 		AllowedOrigins: env.ListOrDefault(envCORSOrigins, []string{"*"}),
 		AllowedMethods: allowedMethods,
 	}
-	logFactory := NewLogFactory(env.OrDefault(envLogMinFilter, defaultLogMinFilter), meta)
-	logger := logFactory.NewLogger(meta)
-	metrics := NewMetrics(name, logger)
-	versionBuilder := NewVersionBuilder(version)
 	globals := ServiceGlobals{
 		AppName:           appName,
+		GroupName:         group,
 		ServerName:        serverName,
 		DeployEnvironment: deployEnvironment,
 		VersionNumber:     version.VersionNumber,
 	}
+	serviceMeta := createServiceMeta(meta, globals)
+	logFactory := NewLogFactory(env.OrDefault(envLogMinFilter, defaultLogMinFilter), serviceMeta)
+	logger := logFactory.NewLogger(meta)
+	metrics := NewMetrics(name, logger)
+	versionBuilder := NewVersionBuilder(version)
 	middlewareWrapper := NewMiddlewareWrapper(logFactory, metrics, &corsOptions, globals)
 	stateReader := NewServiceStateReader()
 	exitFunc := NewExitFunc(logger, shutdownFunc)
@@ -152,6 +155,17 @@ func NewServiceOptions(name string, allowedMethods []string, shutdownFunc Shutdo
 	}
 	opt.SetHandlers()
 	return opt
+}
+
+func createServiceMeta(baseMeta map[string]string, globals ServiceGlobals) map[string]string {
+	serviceMeta := make(map[string]string)
+
+	serviceMeta["entry.applicationgroup"] = globals.GroupName
+	serviceMeta["entry.applicationname"] = globals.AppName
+	serviceMeta["entry.applicationversion"] = globals.VersionNumber
+	serviceMeta["entry.machinename"] = globals.ServerName
+
+	return combineMetas(baseMeta, serviceMeta)
 }
 
 // NewCustomService allows you to customize ServiceFoundation using your own implementations of factories.

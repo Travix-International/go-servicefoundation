@@ -19,7 +19,7 @@ func TestCreateDefaultService(t *testing.T) {
 	}
 
 	// Act
-	sut := servicefoundation.NewService("some-name", []string{}, shutdownFn, sf.BuildVersion{}, make(map[string]string))
+	sut := servicefoundation.NewService("some-group", "some-name", []string{}, shutdownFn, sf.BuildVersion{}, make(map[string]string))
 
 	assert.NotNil(t, sut)
 }

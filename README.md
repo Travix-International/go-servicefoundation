@@ -49,7 +49,7 @@ var gitHash, versionNumber, buildDate string
 
 func main() {
 	svc := sf.NewService(
-		"HelloWorldService",
+		"AppGroup","HelloWorldService",
 		[]string{http.MethodGet},
 		func(log sf.Logger) {
 			log.Info("GracefulShutdown", "Handling graceful shutdown")
@@ -146,10 +146,10 @@ func main() {
 	}()
 
     meta := make(map[string]string)
-    meta["applicationgroup"] = "testgroup"
+    meta["hello"] = "world"
 
 	opt := sf.NewServiceOptions(
-		"HelloWorldService",
+		"AppGroup", "HelloWorldService",
 		[]string{http.MethodGet},
 		shutdownFn,
 		sf.BuildVersion{
