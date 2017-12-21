@@ -27,6 +27,57 @@ func TestLogFormatterImpl_Format(t *testing.T) {
 	assert.NotContains(t, actual, "meta")
 }
 
+func TestLogFormatterImpl_EmptyLevel_Error(t *testing.T) {
+	entry := &logger.Entry{
+		Level:   "",
+		Event:   "Test",
+		Message: "Test \"message\"",
+		Meta:    make(map[string]string),
+	}
+	sut := servicefoundation.NewLogFormatter()
+
+	// Act
+	actual, err := sut.Format(entry)
+
+	assert.NotNil(t, err)
+	assert.Empty(t, actual)
+}
+
+func TestLogFormatterImpl_EmptyEvent_Error(t *testing.T) {
+	entry := &logger.Entry{
+		Level:   "Debug",
+		Event:   "",
+		Message: "Test \"message\"",
+		Meta:    make(map[string]string),
+	}
+	sut := servicefoundation.NewLogFormatter()
+
+	// Act
+	actual, err := sut.Format(entry)
+
+	assert.NotNil(t, err)
+	assert.Empty(t, actual)
+}
+
+func TestLogFormatterImpl_EmptyMessage_Format(t *testing.T) {
+	entry := &logger.Entry{
+		Level:   "Debug",
+		Event:   "Test",
+		Message: "",
+		Meta:    make(map[string]string),
+	}
+	sut := servicefoundation.NewLogFormatter()
+
+	// Act
+	actual, err := sut.Format(entry)
+
+	assert.Nil(t, err)
+	assert.Contains(t, actual, "\"messagetype\":\"Test\"")
+	assert.Contains(t, actual, "\"level\":\"Debug\"")
+	assert.Contains(t, actual, "\"message\":\"\"")
+	assert.NotContains(t, actual, "meta")
+}
+
 func TestLogFormatterImpl_Format_NilEntry(t *testing.T) {
 	sut := servicefoundation.NewLogFormatter()
 
@@ -37,7 +88,7 @@ func TestLogFormatterImpl_Format_NilEntry(t *testing.T) {
 	assert.Equal(t, "", actual)
 }
 
-func TestLogFormatterImplWithMetaProps_Format(t *testing.T) {
+func TestLogFormatterImpl_WithMetaProps_Format(t *testing.T) {
 	meta := make(map[string]string)
 	meta["entry.sessionId"] = "this-is-a-session"
 	meta["entry.applicationGroup"] = "TestGroup"
@@ -66,7 +117,7 @@ func TestLogFormatterImplWithMetaProps_Format(t *testing.T) {
 	assert.NotContains(t, actual, "entry.")
 }
 
-func TestLogFormatterImplWithInvalidStatusCode_Format(t *testing.T) {
+func TestLogFormatterImpl_WithInvalidStatusCode_Format(t *testing.T) {
 	meta := make(map[string]string)
 	meta["entry.statusCode"] = "hmm"
 

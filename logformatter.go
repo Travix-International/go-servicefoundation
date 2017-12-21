@@ -7,9 +7,11 @@ import (
 	"time"
 
 	"github.com/Travix-International/logger"
+	"github.com/pkg/errors"
 )
 
 type (
+	// LogFormatter formats the log entries in a LogStash-compatible JSON string
 	LogFormatter interface {
 		Format(entry *logger.Entry) (string, error)
 	}
@@ -18,20 +20,16 @@ type (
 	}
 
 	flatLogEntry map[string]interface{}
+)
 
-	//LogEntry struct {
-	//	Level            string            `json:"level"`
-	//	Event            string            `json:"event"`
-	//	Message          string            `json:"message"`
-	//	SessionId        string            `json:"sessionid,omitempty"`
-	//	ApplicationGroup string            `json:"applicationgroup,omitempty"`
-	//	StatusCode       *int              `json:"statuscode,omitempty"`
-	//	Meta             map[string]string `json:"meta,omitempty"`
-	//}
+var (
+	logEntryMissingLevelError = errors.New("Missing level in log entry")
+	logEntryMissingEventError = errors.New("Missing event in log entry")
 )
 
 /* LogFormatter implementation */
 
+// NewLogFormatter instatiates a new log formatter.
 func NewLogFormatter() LogFormatter {
 	return &logFormatterImpl{}
 }
@@ -41,7 +39,12 @@ func (f *logFormatterImpl) Format(entry *logger.Entry) (string, error) {
 		return "", nil
 	}
 
-	//TODO: Validate entry
+	if entry.Level == "" {
+		return "", logEntryMissingLevelError
+	}
+	if entry.Event == "" {
+		return "", logEntryMissingEventError
+	}
 
 	var logEntry flatLogEntry = make(map[string]interface{})
 

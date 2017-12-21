@@ -44,7 +44,7 @@ type (
 
 var levels = []string{"debug", "info", "warning", "error"}
 
-// NewLogger instantiates a new LogFactory implementation.
+// NewLogFactory instantiates a new LogFactory implementation.
 func NewLogFactory(logFilter string, baseMeta map[string]string) LogFactory {
 	logLevel := 0
 	levelFound := false
