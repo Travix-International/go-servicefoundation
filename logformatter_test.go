@@ -21,7 +21,7 @@ func TestLogFormatterImpl_Format(t *testing.T) {
 	actual, err := sut.Format(entry)
 
 	assert.Nil(t, err)
-	assert.Contains(t, actual, "\"event\":\"Test\"")
+	assert.Contains(t, actual, "\"messagetype\":\"Test\"")
 	assert.Contains(t, actual, "\"level\":\"Debug\"")
 	assert.Contains(t, actual, "\"message\":\"Test \\\"message\\\"\"")
 	assert.NotContains(t, actual, "meta")
@@ -56,7 +56,7 @@ func TestLogFormatterImplWithMetaProps_Format(t *testing.T) {
 	actual, err := sut.Format(entry)
 
 	assert.Nil(t, err)
-	assert.Contains(t, actual, "\"event\":\"Test\"")
+	assert.Contains(t, actual, "\"messagetype\":\"Test\"")
 	assert.Contains(t, actual, "\"level\":\"Debug\"")
 	assert.Contains(t, actual, "\"message\":\"Test message\"")
 	assert.Contains(t, actual, "\"meta\":{\"something\":\"else\"}")
@@ -82,7 +82,7 @@ func TestLogFormatterImplWithInvalidStatusCode_Format(t *testing.T) {
 	actual, err := sut.Format(entry)
 
 	assert.Nil(t, err)
-	assert.Contains(t, actual, "\"event\":\"Test\"")
+	assert.Contains(t, actual, "\"messagetype\":\"Test\"")
 	assert.Contains(t, actual, "\"level\":\"Debug\"")
 	assert.Contains(t, actual, "\"message\":\"Test message\"")
 	assert.NotContains(t, actual, "meta")

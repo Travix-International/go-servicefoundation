@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Travix-International/logger"
 )
@@ -45,7 +46,10 @@ func (f *logFormatterImpl) Format(entry *logger.Entry) (string, error) {
 	var logEntry flatLogEntry = make(map[string]interface{})
 
 	logEntry["level"] = entry.Level
-	logEntry["event"] = entry.Event
+	logEntry["type"] = "v2"
+	logEntry["timestamp"] = time.Now().UTC().Format("2006-01-02T15:04:05.9999999Z")
+	logEntry["loggername"] = "go-servicefoundation"
+	logEntry["messagetype"] = entry.Event
 	logEntry["message"] = entry.Message
 
 	if statusCode := getStatusCode(entry); statusCode != nil {
