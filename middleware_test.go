@@ -1,6 +1,7 @@
 package servicefoundation_test
 
 import (
+	"crypto/tls"
 	"net/http"
 	"testing"
 
@@ -16,9 +17,11 @@ func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
 		sf.Counter,
 		sf.Histogram,
 		sf.RequestLogging,
+		sf.RequestLogging,
 		sf.RequestMetrics,
 		sf.PanicTo500,
 	}
+	useTls := false
 
 	for i, scenario := range scenarios {
 		const subSystem = "my-sub"
@@ -33,6 +36,11 @@ func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
 		}
 		rdr := &mockReader{}
 		r, _ := http.NewRequest("GET", "https://www.sf.com/some/url", rdr)
+		if useTls {
+			r.URL.Scheme = ""
+			r.TLS = &tls.ConnectionState{}
+		}
+		useTls = !useTls
 		w := &mockResponseWriter{}
 		h := &mockHistogramVec{}
 		s := &mockSummaryVec{}

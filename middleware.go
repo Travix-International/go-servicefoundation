@@ -150,7 +150,13 @@ func (m *middlewareWrapperImpl) getMetaLog(subsystem, name string, w WrappedResp
 	m.addMetaEntry(meta, "request", fmt.Sprintf("%s %s", r.Method, r.RequestURI))
 
 	if r.URL != nil {
-		m.addMetaEntry(meta, "http.url", fmt.Sprintf("%s//%s%s", r.URL.Scheme, r.Host, r.RequestURI))
+		scheme := "http"
+		if r.URL.Scheme != "" {
+			scheme = r.URL.Scheme
+		} else if r.TLS != nil {
+			scheme = "https"
+		}
+		m.addMetaEntry(meta, "http.url", fmt.Sprintf("%s://%s%s", scheme, r.Host, r.RequestURI))
 		m.addMetaEntry(meta, "http.query", r.URL.RawQuery)
 		m.addMetaEntry(meta, "http.route", r.URL.RawPath)
 	}
