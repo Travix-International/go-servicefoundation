@@ -36,6 +36,7 @@ type (
 	}
 
 	logFactoryImpl struct {
+		baseMeta  map[string]string
 		logFilter string
 		logLevel  int
 	}
@@ -44,7 +45,7 @@ type (
 var levels = []string{"debug", "info", "warning", "error"}
 
 // NewLogger instantiates a new LogFactory implementation.
-func NewLogFactory(logFilter string) LogFactory {
+func NewLogFactory(logFilter string, baseMeta map[string]string) LogFactory {
 	logLevel := 0
 	levelFound := false
 	lcLogFilter := strings.ToLower(logFilter)
@@ -62,6 +63,7 @@ func NewLogFactory(logFilter string) LogFactory {
 	}
 
 	return &logFactoryImpl{
+		baseMeta:  baseMeta,
 		logFilter: logFilter,
 		logLevel:  logLevel,
 	}
@@ -71,16 +73,30 @@ func NewLogFactory(logFilter string) LogFactory {
 
 // NewLogger instantiates a new Logger implementation.
 func (f *logFactoryImpl) NewLogger(meta map[string]string) Logger {
-
-	log, _ := logger.New(meta)
-	consoleLogFormat := logger.NewStringFormat("[%s] ", "[%s] ", "%s\n", " (%s=", "%s)", "")
-	consoleTransport := logger.NewTransport(os.Stdout, consoleLogFormat)
+	logMeta := combineMetas(meta, f.baseMeta)
+	log, _ := logger.New(logMeta)
+	formatter := NewLogFormatter()
+	consoleTransport := logger.NewTransport(os.Stdout, formatter)
 	log.AddTransport(consoleTransport)
 
 	return &loggerImpl{
 		logger:      log,
 		logMinLevel: f.logLevel,
 	}
+}
+
+func combineMetas(meta1, meta2 map[string]string) map[string]string {
+	meta := make(map[string]string)
+
+	for key, value := range meta1 {
+		meta[key] = value
+	}
+
+	for key, value := range meta2 {
+		meta[key] = value
+	}
+
+	return meta
 }
 
 /* Logger implementation */

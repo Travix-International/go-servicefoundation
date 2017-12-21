@@ -18,11 +18,10 @@ ServiceFoundation enables you to create Web Services containing:
 * Customizable server timeouts
 * Request/response logging as middleware
 * Support service warm-up through state customization
+* Standardized metrics (defaults to go-metrics)
+* Standardized log messages in JSON format
 
 To do:
-- [ ] Standardize metrics
-- [ ] Standardize log messages
-- [ ] Extend logging with meta information
 - [ ] De-duplicate CORS elements in slices
 - [ ] Automated documentation (GoDocs?)
 
@@ -59,7 +58,7 @@ func main() {
 			GitHash:       gitHash,
 			VersionNumber: versionNumber,
 			BuildDate:     buildDate,
-		})
+		}, make(map[string]string))
 
 	svc.AddRoute(
 		"helloworld",
@@ -146,6 +145,9 @@ func main() {
 		stateReader.isWarmedUp = true
 	}()
 
+    meta := make(map[string]string)
+    meta["applicationgroup"] = "testgroup"
+
 	opt := sf.NewServiceOptions(
 		"HelloWorldService",
 		[]string{http.MethodGet},
@@ -154,7 +156,7 @@ func main() {
 			GitHash:       gitHash,
 			VersionNumber: versionNumber,
 			BuildDate:     buildDate,
-		})
+		}, meta)
 	opt.ServiceStateReader = stateReader
 	opt.SetHandlers() // Required to re-bind the state to the ReadinessHandler
 

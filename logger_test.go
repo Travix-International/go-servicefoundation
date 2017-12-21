@@ -8,7 +8,7 @@ import (
 )
 
 func TestLoggerImpl_GetLogger_DebugLevel(t *testing.T) {
-	factory := sf.NewLogFactory("Debug")
+	factory := sf.NewLogFactory("Debug", make(map[string]string))
 	sut := factory.NewLogger(make(map[string]string))
 
 	// Act
@@ -22,7 +22,7 @@ func TestLoggerImpl_GetLogger_DebugLevel(t *testing.T) {
 }
 
 func TestLoggerImpl_GetLogger_ErrorLevel(t *testing.T) {
-	factory := sf.NewLogFactory("Error")
+	factory := sf.NewLogFactory("Error", make(map[string]string))
 	sut := factory.NewLogger(make(map[string]string))
 
 	// Act
@@ -36,7 +36,7 @@ func TestLoggerImpl_GetLogger_ErrorLevel(t *testing.T) {
 }
 
 func TestLoggerImpl_GetLogger_UnknownLevel(t *testing.T) {
-	factory := sf.NewLogFactory("Whatevah")
+	factory := sf.NewLogFactory("Whatevah", make(map[string]string))
 	sut := factory.NewLogger(make(map[string]string))
 
 	// Act
@@ -50,7 +50,7 @@ func TestLoggerImpl_GetLogger_UnknownLevel(t *testing.T) {
 }
 
 func TestLoggerImpl_GetLogger_StaticMsg(t *testing.T) {
-	factory := sf.NewLogFactory("Debug")
+	factory := sf.NewLogFactory("Debug", make(map[string]string))
 	sut := factory.NewLogger(make(map[string]string))
 
 	// Act
@@ -58,6 +58,26 @@ func TestLoggerImpl_GetLogger_StaticMsg(t *testing.T) {
 	sut.Info("event", "msg")
 	sut.Warn("event", "msg")
 	sut.Error("event", "msg")
+	logger := sut.GetLogger()
+
+	assert.NotNil(t, logger)
+}
+
+func TestLoggerImpl_GetLogger_CombineMetas(t *testing.T) {
+	meta1 := make(map[string]string)
+	meta1["key1"] = "value1"
+	meta1["key2"] = "value2"
+	meta2 := make(map[string]string)
+	meta2["key3"] = "value3"
+	meta1["key2"] = "value2b"
+	factory := sf.NewLogFactory("Debug", meta1)
+	sut := factory.NewLogger(meta2)
+
+	// Act
+	sut.Debug("event", "msg %s %s", "arg1", "arg2")
+	sut.Info("event", "msg %s %s", "arg1", "arg2")
+	sut.Warn("event", "msg %s %s", "arg1", "arg2")
+	sut.Error("event", "msg %s %s", "arg1", "arg2")
 	logger := sut.GetLogger()
 
 	assert.NotNil(t, logger)

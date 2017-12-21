@@ -102,14 +102,18 @@ type (
 var DefaultMiddlewares = []Middleware{PanicTo500, NoCaching}
 
 // NewService creates and returns a Service that uses environment variables for default configuration.
-func NewService(name string, allowedMethods []string, shutdownFunc ShutdownFunc, version BuildVersion) Service {
-	opt := NewServiceOptions(name, allowedMethods, shutdownFunc, version)
+func NewService(name string, allowedMethods []string, shutdownFunc ShutdownFunc, version BuildVersion,
+	meta map[string]string) Service {
+
+	opt := NewServiceOptions(name, allowedMethods, shutdownFunc, version, meta)
 
 	return NewCustomService(opt)
 }
 
 // NewServiceOptions creates and returns ServiceOptions that use environment variables for default configuration.
-func NewServiceOptions(name string, allowedMethods []string, shutdownFunc ShutdownFunc, version BuildVersion) ServiceOptions {
+func NewServiceOptions(name string, allowedMethods []string, shutdownFunc ShutdownFunc, version BuildVersion,
+	meta map[string]string) ServiceOptions {
+
 	appName := env.OrDefault(envAppName, name)
 	serverName := env.OrDefault(envServerName, name)
 	deployEnvironment := env.OrDefault(envDeployEnvironment, "UNKNOWN")
@@ -117,8 +121,8 @@ func NewServiceOptions(name string, allowedMethods []string, shutdownFunc Shutdo
 		AllowedOrigins: env.ListOrDefault(envCORSOrigins, []string{"*"}),
 		AllowedMethods: allowedMethods,
 	}
-	logFactory := NewLogFactory(env.OrDefault(envLogMinFilter, defaultLogMinFilter))
-	logger := logFactory.NewLogger(make(map[string]string))
+	logFactory := NewLogFactory(env.OrDefault(envLogMinFilter, defaultLogMinFilter), meta)
+	logger := logFactory.NewLogger(meta)
 	metrics := NewMetrics(name, logger)
 	versionBuilder := NewVersionBuilder(version)
 	globals := ServiceGlobals{
@@ -127,7 +131,7 @@ func NewServiceOptions(name string, allowedMethods []string, shutdownFunc Shutdo
 		DeployEnvironment: deployEnvironment,
 		VersionNumber:     version.VersionNumber,
 	}
-	middlewareWrapper := NewMiddlewareWrapper(logger, metrics, &corsOptions, globals)
+	middlewareWrapper := NewMiddlewareWrapper(logFactory, metrics, &corsOptions, globals)
 	stateReader := NewServiceStateReader()
 	exitFunc := NewExitFunc(logger, shutdownFunc)
 	port := env.AsInt(envHTTPpPort, defaultHTTPPort)

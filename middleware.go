@@ -38,18 +38,20 @@ type (
 )
 
 type middlewareWrapperImpl struct {
-	logger      Logger
+	log         Logger
+	logFactory  LogFactory
 	metrics     Metrics
 	globals     ServiceGlobals
 	corsOptions *cors.Options
 }
 
 // NewMiddlewareWrapper instantiates a new MiddelwareWrapper implementation.
-func NewMiddlewareWrapper(logger Logger, metrics Metrics, corsOptions *CORSOptions, globals ServiceGlobals) MiddlewareWrapper {
+func NewMiddlewareWrapper(logFactory LogFactory, metrics Metrics, corsOptions *CORSOptions, globals ServiceGlobals) MiddlewareWrapper {
 	m := &middlewareWrapperImpl{
-		logger:  logger,
-		metrics: metrics,
-		globals: globals,
+		log:        logFactory.NewLogger(make(map[string]string)),
+		logFactory: logFactory,
+		metrics:    metrics,
+		globals:    globals,
 	}
 	m.corsOptions = m.mergeCORSOptions(corsOptions)
 	return m
@@ -74,7 +76,7 @@ func (m *middlewareWrapperImpl) Wrap(subsystem, name string, middleware Middlewa
 	case RequestMetrics:
 		return m.wrapWithRequestMetrics(subsystem, name, handler)
 	default:
-		m.logger.Warn("UnhandledMiddleware", "Unhandled middleware: %v", middleware)
+		m.log.Warn("UnhandledMiddleware", "Unhandled middleware: %v", middleware)
 	}
 	return handler
 }
@@ -108,19 +110,67 @@ func (m *middlewareWrapperImpl) wrapWithHistogram(subsystem, name string, handle
 
 func (m *middlewareWrapperImpl) wrapWithRequestLogging(subsystem, name string, handler Handle) Handle {
 	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
-		log := m.logger
+		meta := make(map[string]string)
 		start := time.Now()
 
-		//TODO: Log message for requests
-		//log.Info(fmt.Sprintf("Request-%s", name), "TODO")
+		log := m.getMetaLog(subsystem, name, nil, r, p, meta)
+		log.Info("ApiRequest", m.getRequestStartMessage(r, p))
 
 		handler(w, r, p)
 
-		elapsedMicroSeconds := time.Since(start).Nanoseconds() / int64(time.Microsecond)
+		elapsedMs := float64(time.Since(start).Nanoseconds()/int64(time.Microsecond)) / 1000.0
+		durationMs := strconv.FormatFloat(elapsedMs, 'f', 3, 64)
 
-		//TODO: Log message for responses
-		log.Info(fmt.Sprintf("Response-%s", name), "Elapsed (microsec): %d", elapsedMicroSeconds)
+		meta["entry.duration"] = durationMs
+		log = m.getMetaLog(subsystem, name, w, r, p, meta)
+		log.Info("ApiResponse", m.getRequestEndMessage(w, r, p, durationMs))
 	}
+}
+
+func (m *middlewareWrapperImpl) getRequestStartMessage(r *http.Request, p RouterParams) string {
+	return fmt.Sprintf("%s %s", r.Method, r.RequestURI)
+}
+
+func (m *middlewareWrapperImpl) getRequestEndMessage(w WrappedResponseWriter, r *http.Request, p RouterParams, durationMs string) string {
+	status := strconv.Itoa(w.Status())
+	contentType := w.Header().Get("content-type")
+
+	return fmt.Sprintf("%s %s finished. Duration: %sms. Status: %s, ContentType: %s",
+		r.Method,
+		r.RequestURI,
+		durationMs,
+		status,
+		contentType,
+	)
+}
+
+func (m *middlewareWrapperImpl) getMetaLog(subsystem, name string, w WrappedResponseWriter, r *http.Request, p RouterParams, meta map[string]string) Logger {
+	m.addMetaEntry(meta, "http.method", r.Method)
+	m.addMetaEntry(meta, "http.url", r.RequestURI)
+	m.addMetaEntry(meta, "request", fmt.Sprintf("%s %s", r.Method, r.RequestURI))
+
+	if r.URL != nil {
+		m.addMetaEntry(meta, "http.host", r.URL.Hostname())
+		m.addMetaEntry(meta, "http.query", r.URL.RawQuery)
+		m.addMetaEntry(meta, "http.route", r.URL.RawPath)
+	}
+
+	if w != nil {
+		m.addMetaEntry(meta, "statuscode", strconv.Itoa(w.Status()))
+
+		for key := range w.Header() {
+			m.addMetaEntry(meta, "header."+strings.ToLower(key), w.Header().Get(key))
+		}
+	}
+
+	return m.logFactory.NewLogger(meta)
+}
+
+func (m *middlewareWrapperImpl) addMetaEntry(meta map[string]string, key, value string) {
+	if value == "" {
+		return
+	}
+	meta["entry."+key] = value
 }
 
 func (m *middlewareWrapperImpl) getLabelsAndValues(subsystem, name string, w WrappedResponseWriter,
@@ -205,7 +255,8 @@ func (m *middlewareWrapperImpl) wrapWithPanicHandler(subsystem, name string, han
 	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
 		defer func() {
 			if rec := recover(); rec != nil {
-				m.logger.Error("PanicAutorecover", "PANIC recovered: %v", rec)
+				log := m.getMetaLog(subsystem, name, w, r, p, make(map[string]string))
+				log.Error("PanicAutorecover", "PANIC recovered: %v", rec)
 				w.WriteHeader(http.StatusInternalServerError)
 			}
 		}()

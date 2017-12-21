@@ -23,6 +23,7 @@ func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
 	for i, scenario := range scenarios {
 		const subSystem = "my-sub"
 		const name = "my-name"
+		logFactory := &mockLogFactory{}
 		log := &mockLogger{}
 		m := &mockMetrics{}
 		corsOptions := &sf.CORSOptions{}
@@ -36,9 +37,11 @@ func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
 		h := &mockHistogramVec{}
 		s := &mockSummaryVec{}
 		p := sf.RouterParams{}
-		sut := sf.NewMiddlewareWrapper(log, m, corsOptions, sf.ServiceGlobals{})
 
-		w.On("Header").Return(http.Header{})
+		header := http.Header{}
+		header.Set("foo", "bar")
+
+		w.On("Header").Return(header)
 		w.On("Status").Return(http.StatusOK)
 		h.On("RecordTimeElapsed", mock.Anything)
 		h.On("RecordDuration", mock.Anything, mock.Anything)
@@ -46,7 +49,10 @@ func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
 		m.On("CountLabels", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
 		m.On("AddHistogramVec", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(h)
 		m.On("AddSummaryVec", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(s)
+		logFactory.On("NewLogger", mock.Anything).Return(log)
 		log.On("Info", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+
+		sut := sf.NewMiddlewareWrapper(logFactory, m, corsOptions, sf.ServiceGlobals{})
 
 		// Act
 		actual := sut.Wrap(subSystem, name, scenario, handle)
@@ -62,14 +68,17 @@ func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
 func TestMiddlewareWrapperImpl_Wrap_UnknownMiddleware_ReturnsUnwrappedHandler(t *testing.T) {
 	const subSystem = "my-sub"
 	const name = "my-name"
+	logFactory := &mockLogFactory{}
 	log := &mockLogger{}
 	m := &mockMetrics{}
 	corsOptions := &sf.CORSOptions{}
 	handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {
 	}
-	sut := sf.NewMiddlewareWrapper(log, m, corsOptions, sf.ServiceGlobals{})
 
+	logFactory.On("NewLogger", mock.Anything).Return(log)
 	log.On("Warn", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+
+	sut := sf.NewMiddlewareWrapper(logFactory, m, corsOptions, sf.ServiceGlobals{})
 
 	// Act
 	actual := sut.Wrap(subSystem, name, 0, handle)
@@ -84,6 +93,7 @@ func TestMiddlewareWrapperImpl_Wrap_PanicsAreHandled(t *testing.T) {
 	for i, scenario := range scenarios {
 		const subSystem = "my-sub"
 		const name = "my-name"
+		logFactory := &mockLogFactory{}
 		log := &mockLogger{}
 		m := &mockMetrics{}
 		corsOptions := &sf.CORSOptions{}
@@ -94,10 +104,14 @@ func TestMiddlewareWrapperImpl_Wrap_PanicsAreHandled(t *testing.T) {
 		r, _ := http.NewRequest("GET", "https://www.sf.com/some/url", rdr)
 		w := &mockResponseWriter{}
 		p := sf.RouterParams{}
-		sut := sf.NewMiddlewareWrapper(log, m, corsOptions, sf.ServiceGlobals{})
 
+		logFactory.On("NewLogger", mock.Anything).Return(log)
 		log.On("Error", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 		w.On("WriteHeader", http.StatusInternalServerError).Once()
+		w.On("Header").Return(http.Header{}).Once()
+		w.On("Status").Return(http.StatusOK).Once()
+
+		sut := sf.NewMiddlewareWrapper(logFactory, m, corsOptions, sf.ServiceGlobals{})
 
 		// Act
 		actual := sut.Wrap(subSystem, name, scenario, handle)
