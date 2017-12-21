@@ -13,15 +13,15 @@ import (
 )
 
 const (
-	envCORSOrigins       string = "CORS_ORIGINS"
-	envHTTPpPort         string = "HTTPPORT"
-	envLogMinFilter      string = "LOG_MINFILTER"
-	envAppName           string = "APP_NAME"
-	envServerName        string = "SERVER_NAME"
-	envDeployEnvironment string = "DEPLOY_ENVIRONMENT"
+	envCORSOrigins       = "CORS_ORIGINS"
+	envHTTPpPort         = "HTTPPORT"
+	envLogMinFilter      = "LOG_MINFILTER"
+	envAppName           = "APP_NAME"
+	envServerName        = "SERVER_NAME"
+	envDeployEnvironment = "DEPLOY_ENVIRONMENT"
 
-	defaultHTTPPort     int    = 8080
-	defaultLogMinFilter string = "Warning"
+	defaultHTTPPort     = 8080
+	defaultLogMinFilter = "Warning"
 
 	publicSubsystem = "public"
 )
@@ -33,6 +33,7 @@ type (
 	// ServiceGlobals contains basic service properties, like name, deployment environment and version number.
 	ServiceGlobals struct {
 		AppName           string
+		GroupName         string
 		ServerName        string
 		DeployEnvironment string
 		VersionNumber     string
@@ -45,7 +46,7 @@ type (
 		Port               int
 		ReadinessPort      int
 		InternalPort       int
-		Logger             Logger
+		LogFactory         LogFactory
 		Metrics            Metrics
 		RouterFactory      RouterFactory
 		MiddlewareWrapper  MiddlewareWrapper
@@ -80,6 +81,7 @@ type (
 		port            int
 		readinessPort   int
 		internalPort    int
+		logFactory      LogFactory
 		log             Logger
 		metrics         Metrics
 		publicRouter    *Router
@@ -95,24 +97,24 @@ type (
 		sendChan        chan bool
 		receiveChan     chan bool
 	}
-
-	serverInstance struct {
-		shutdownChan chan bool
-	}
 )
 
 // DefaultMiddlewares contains the default middleware wrappers for the predefined service endpoints.
 var DefaultMiddlewares = []Middleware{PanicTo500, NoCaching}
 
 // NewService creates and returns a Service that uses environment variables for default configuration.
-func NewService(name string, allowedMethods []string, shutdownFunc ShutdownFunc, version BuildVersion) Service {
-	opt := NewServiceOptions(name, allowedMethods, shutdownFunc, version)
+func NewService(group, name string, allowedMethods []string, shutdownFunc ShutdownFunc, version BuildVersion,
+	meta map[string]string) Service {
+
+	opt := NewServiceOptions(group, name, allowedMethods, shutdownFunc, version, meta)
 
 	return NewCustomService(opt)
 }
 
 // NewServiceOptions creates and returns ServiceOptions that use environment variables for default configuration.
-func NewServiceOptions(name string, allowedMethods []string, shutdownFunc ShutdownFunc, version BuildVersion) ServiceOptions {
+func NewServiceOptions(group, name string, allowedMethods []string, shutdownFunc ShutdownFunc, version BuildVersion,
+	meta map[string]string) ServiceOptions {
+
 	appName := env.OrDefault(envAppName, name)
 	serverName := env.OrDefault(envServerName, name)
 	deployEnvironment := env.OrDefault(envDeployEnvironment, "UNKNOWN")
@@ -120,16 +122,19 @@ func NewServiceOptions(name string, allowedMethods []string, shutdownFunc Shutdo
 		AllowedOrigins: env.ListOrDefault(envCORSOrigins, []string{"*"}),
 		AllowedMethods: allowedMethods,
 	}
-	logger := NewLogger(env.OrDefault(envLogMinFilter, defaultLogMinFilter))
-	metrics := NewMetrics(name, logger)
-	versionBuilder := NewVersionBuilder(version)
 	globals := ServiceGlobals{
 		AppName:           appName,
+		GroupName:         group,
 		ServerName:        serverName,
 		DeployEnvironment: deployEnvironment,
 		VersionNumber:     version.VersionNumber,
 	}
-	middlewareWrapper := NewMiddlewareWrapper(logger, metrics, &corsOptions, globals)
+	serviceMeta := createServiceMeta(meta, globals)
+	logFactory := NewLogFactory(env.OrDefault(envLogMinFilter, defaultLogMinFilter), serviceMeta)
+	logger := logFactory.NewLogger(meta)
+	metrics := NewMetrics(name, logger)
+	versionBuilder := NewVersionBuilder(version)
+	middlewareWrapper := NewMiddlewareWrapper(logFactory, metrics, &corsOptions, globals)
 	stateReader := NewServiceStateReader()
 	exitFunc := NewExitFunc(logger, shutdownFunc)
 	port := env.AsInt(envHTTPpPort, defaultHTTPPort)
@@ -142,7 +147,7 @@ func NewServiceOptions(name string, allowedMethods []string, shutdownFunc Shutdo
 		InternalPort:       port + 2,
 		MiddlewareWrapper:  middlewareWrapper,
 		RouterFactory:      NewRouterFactory(),
-		Logger:             logger,
+		LogFactory:         logFactory,
 		Metrics:            metrics,
 		VersionBuilder:     versionBuilder,
 		ServiceStateReader: stateReader,
@@ -150,6 +155,17 @@ func NewServiceOptions(name string, allowedMethods []string, shutdownFunc Shutdo
 	}
 	opt.SetHandlers()
 	return opt
+}
+
+func createServiceMeta(baseMeta map[string]string, globals ServiceGlobals) map[string]string {
+	serviceMeta := make(map[string]string)
+
+	serviceMeta["entry.applicationgroup"] = globals.GroupName
+	serviceMeta["entry.applicationname"] = globals.AppName
+	serviceMeta["entry.applicationversion"] = globals.VersionNumber
+	serviceMeta["entry.machinename"] = globals.ServerName
+
+	return combineMetas(baseMeta, serviceMeta)
 }
 
 // NewCustomService allows you to customize ServiceFoundation using your own implementations of factories.
@@ -160,7 +176,8 @@ func NewCustomService(options ServiceOptions) Service {
 		port:            options.Port,
 		readinessPort:   options.ReadinessPort,
 		internalPort:    options.InternalPort,
-		log:             options.Logger,
+		logFactory:      options.LogFactory,
+		log:             options.LogFactory.NewLogger(make(map[string]string)),
 		metrics:         options.Metrics,
 		publicRouter:    options.RouterFactory.NewRouter(),
 		readinessRouter: options.RouterFactory.NewRouter(),

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 
 	"github.com/Travix-International/logger"
 )
@@ -13,7 +12,7 @@ const (
 	minDebugLevel = 1
 	minInfoLevel  = 2
 	minWarnLevel  = 3
-	defaultLevel  = "warning"
+	defaultLevel  = 3 // Warning
 )
 
 type (
@@ -30,30 +29,74 @@ type (
 		logMinLevel int
 		logger      *logger.Logger
 	}
+
+	// LogFactory can be used to instantiate a new logger
+	LogFactory interface {
+		NewLogger(meta map[string]string) Logger
+	}
+
+	logFactoryImpl struct {
+		baseMeta  map[string]string
+		logFilter string
+		logLevel  int
+	}
 )
 
-var (
-	levels          = []string{"debug", "info", "warning", "error"}
-	loggerInstances = make(map[string]*loggerImpl)
-	once            sync.Once
-)
+var levels = []string{"debug", "info", "warning", "error"}
+
+// NewLogFactory instantiates a new LogFactory implementation.
+func NewLogFactory(logFilter string, baseMeta map[string]string) LogFactory {
+	logLevel := 0
+	levelFound := false
+	lcLogFilter := strings.ToLower(logFilter)
+
+	for i, level := range levels {
+		logLevel = i + 1
+		if lcLogFilter == level {
+			levelFound = true
+			break
+		}
+	}
+
+	if !levelFound {
+		logLevel = defaultLevel
+	}
+
+	return &logFactoryImpl{
+		baseMeta:  baseMeta,
+		logFilter: logFilter,
+		logLevel:  logLevel,
+	}
+}
+
+/* LogFactory implementation */
 
 // NewLogger instantiates a new Logger implementation.
-func NewLogger(logMinFilter string) Logger {
-	once.Do(func() {
-		for i, level := range levels {
-			log, _ := logger.New(make(map[string]string))
-			consoleLogFormat := logger.NewStringFormat("[%s] ", "[%s] ", "%s\n", " (%s=", "%s)", "")
-			consoleTransport := logger.NewTransport(os.Stdout, consoleLogFormat)
-			log.AddTransport(consoleTransport)
+func (f *logFactoryImpl) NewLogger(meta map[string]string) Logger {
+	logMeta := combineMetas(meta, f.baseMeta)
+	log, _ := logger.New(logMeta)
+	formatter := NewLogFormatter()
+	consoleTransport := logger.NewTransport(os.Stdout, formatter)
+	log.AddTransport(consoleTransport)
 
-			loggerInstances[level] = &loggerImpl{
-				logger:      log,
-				logMinLevel: i + 1,
-			}
-		}
-	})
-	return getLogInstance(logMinFilter)
+	return &loggerImpl{
+		logger:      log,
+		logMinLevel: f.logLevel,
+	}
+}
+
+func combineMetas(meta1, meta2 map[string]string) map[string]string {
+	meta := make(map[string]string)
+
+	for key, value := range meta1 {
+		meta[key] = value
+	}
+
+	for key, value := range meta2 {
+		meta[key] = value
+	}
+
+	return meta
 }
 
 /* Logger implementation */
@@ -97,22 +140,6 @@ func (l *loggerImpl) Error(event, formatOrMsg string, a ...interface{}) error {
 		return l.logger.Error(event, formatOrMsg)
 	}
 	return l.logger.Error(event, fmt.Sprintf(formatOrMsg, a...))
-}
-
-func getLogInstance(level string) *loggerImpl {
-	var inst *loggerImpl
-
-	for i := 0; i < len(levels); i++ {
-		if inst = loggerInstances[strings.ToLower(level)]; inst != nil {
-			break
-		}
-	}
-
-	if inst == nil {
-		inst = loggerInstances[defaultLevel]
-		inst.Warn("LogMinLevel", "Failed parsing log level '%s', defaulting to '%s'", level, defaultLevel)
-	}
-	return inst
 }
 
 func (l *loggerImpl) GetLogger() *logger.Logger {

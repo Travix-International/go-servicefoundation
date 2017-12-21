@@ -5,7 +5,7 @@
 
 > Create new Web Services using convention-based configuration.
 
-More documentation to be found on [GodDoc](https://godoc.org/github.com/Travix-International/go-servicefoundation).
+More documentation to be found on [GoDoc](https://godoc.org/github.com/Travix-International/go-servicefoundation).
 
 ServiceFoundation enables you to create Web Services containing:
 
@@ -18,11 +18,10 @@ ServiceFoundation enables you to create Web Services containing:
 * Customizable server timeouts
 * Request/response logging as middleware
 * Support service warm-up through state customization
+* Standardized metrics (defaults to go-metrics)
+* Standardized log messages in JSON format
 
 To do:
-- [ ] Standardize metrics
-- [ ] Standardize log messages
-- [ ] Extend logging with meta information
 - [ ] De-duplicate CORS elements in slices
 - [ ] Automated documentation (GoDocs?)
 
@@ -50,7 +49,7 @@ var gitHash, versionNumber, buildDate string
 
 func main() {
 	svc := sf.NewService(
-		"HelloWorldService",
+		"AppGroup","HelloWorldService",
 		[]string{http.MethodGet},
 		func(log sf.Logger) {
 			log.Info("GracefulShutdown", "Handling graceful shutdown")
@@ -59,7 +58,7 @@ func main() {
 			GitHash:       gitHash,
 			VersionNumber: versionNumber,
 			BuildDate:     buildDate,
-		})
+		}, make(map[string]string))
 
 	svc.AddRoute(
 		"helloworld",
@@ -146,15 +145,18 @@ func main() {
 		stateReader.isWarmedUp = true
 	}()
 
+    meta := make(map[string]string)
+    meta["hello"] = "world"
+
 	opt := sf.NewServiceOptions(
-		"HelloWorldService",
+		"AppGroup", "HelloWorldService",
 		[]string{http.MethodGet},
 		shutdownFn,
 		sf.BuildVersion{
 			GitHash:       gitHash,
 			VersionNumber: versionNumber,
 			BuildDate:     buildDate,
-		})
+		}, meta)
 	opt.ServiceStateReader = stateReader
 	opt.SetHandlers() // Required to re-bind the state to the ReadinessHandler
 

@@ -28,6 +28,7 @@ func TestMetricsImpl(t *testing.T) {
 
 	s := sut.AddSummaryVec("sub", "sum", "help", []string{"a", "b", "c"}, []string{"1", "2", "3"})
 	s.RecordTimeElapsed(time.Now())
+	s.RecordDuration(time.Now(), time.Millisecond)
 
 	assert.NotNil(t, h)
 	assert.NotNil(t, s)

@@ -19,12 +19,13 @@ func TestCreateDefaultService(t *testing.T) {
 	}
 
 	// Act
-	sut := servicefoundation.NewService("some-name", []string{}, shutdownFn, sf.BuildVersion{})
+	sut := servicefoundation.NewService("some-group", "some-name", []string{}, shutdownFn, sf.BuildVersion{}, make(map[string]string))
 
 	assert.NotNil(t, sut)
 }
 
 func TestServiceImpl_AddRoute(t *testing.T) {
+	logFactory := &mockLogFactory{}
 	log := &mockLogger{}
 	m := &mockMetrics{}
 	v := &mockVersionBuilder{}
@@ -38,7 +39,7 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 		Globals: sf.ServiceGlobals{
 			AppName: "test-service",
 		},
-		Logger:         log,
+		LogFactory:     logFactory,
 		Metrics:        m,
 		Port:           1234,
 		ReadinessPort:  1235,
@@ -52,6 +53,7 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 	handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
 	middlewares := servicefoundation.DefaultMiddlewares
 
+	logFactory.On("NewLogger", mock.Anything).Return(log)
 	shf.
 		On("Wrap", "public", "do", middlewares, mock.AnythingOfType("Handle")).
 		Return(wrappedHandle).
@@ -71,6 +73,7 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 }
 
 func TestServiceImpl_Run(t *testing.T) {
+	logFactory := &mockLogFactory{}
 	log := &mockLogger{}
 	m := &mockMetrics{}
 	v := &mockVersionBuilder{}
@@ -107,6 +110,7 @@ func TestServiceImpl_Run(t *testing.T) {
 		RootHandler:      rootH,
 	}
 
+	logFactory.On("NewLogger", mock.Anything).Return(log)
 	log.On("Info", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	log.On("Debug", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	v.On("ToString").Return("(version)")
@@ -139,7 +143,7 @@ func TestServiceImpl_Run(t *testing.T) {
 		Globals: sf.ServiceGlobals{
 			AppName: "test-service",
 		},
-		Logger:         log,
+		LogFactory:     logFactory,
 		Metrics:        m,
 		Port:           1234,
 		ReadinessPort:  1235,
