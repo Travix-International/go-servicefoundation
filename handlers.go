@@ -95,8 +95,8 @@ func (f *serviceHandlerFactoryImpl) Wrap(subsystem, name string, middlewares []M
 	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		h := handle
 
-		for _, middleware := range middlewares {
-			h = f.middlewareWrapper.Wrap(subsystem, name, middleware, h)
+		for i := 0; i < len(middlewares); i++ {
+			h = f.middlewareWrapper.Wrap(subsystem, name, middlewares[i], h)
 		}
 		h(NewWrappedResponseWriter(w), r, RouterParams{Params: p})
 	}

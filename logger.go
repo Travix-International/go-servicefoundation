@@ -50,9 +50,9 @@ func NewLogFactory(logFilter string, baseMeta map[string]string) LogFactory {
 	levelFound := false
 	lcLogFilter := strings.ToLower(logFilter)
 
-	for i, level := range levels {
+	for i := 0; i < len(levels); i++ {
 		logLevel = i + 1
-		if lcLogFilter == level {
+		if lcLogFilter == levels[i] {
 			levelFound = true
 			break
 		}
