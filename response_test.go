@@ -22,7 +22,7 @@ func TestCreateWrappedResponseWriter(t *testing.T) {
 		Twice()
 	w.
 		On("WriteHeader", mock.AnythingOfType("int")).
-		Twice()
+		Once()
 	sut := sf.NewWrappedResponseWriter(w)
 
 	// Act
@@ -30,7 +30,7 @@ func TestCreateWrappedResponseWriter(t *testing.T) {
 	sut.Write([]byte("then"))
 	sut.WriteHeader(http.StatusInternalServerError)
 
-	assert.Equal(t, http.StatusOK, sut.Status())
+	assert.Equal(t, http.StatusInternalServerError, sut.Status())
 	w.AssertExpectations(t)
 }
 

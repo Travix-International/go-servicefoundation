@@ -63,12 +63,13 @@ func (w *wrappedResponseWriterImpl) Write(p []byte) (n int, err error) {
 }
 
 func (w *wrappedResponseWriterImpl) WriteHeader(code int) {
-	w.ResponseWriter.WriteHeader(code)
-
-	// Check after in case there's error handling in the wrapped ResponseWriter.
-	if w.wroteHeader {
+	if w.wroteHeader || code == http.StatusOK {
+		// If the status is "OK", then we don't have to remember that we wrote it, because it's the default.
 		return
 	}
+
+	w.ResponseWriter.WriteHeader(code)
+
 	w.status = code
 	w.wroteHeader = true
 }
