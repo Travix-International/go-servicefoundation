@@ -3,6 +3,7 @@ package servicefoundation
 import (
 	"fmt"
 	"net/http"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -267,7 +268,7 @@ func (m *middlewareWrapperImpl) wrapWithPanicHandler(subsystem, name string, han
 		defer func() {
 			if rec := recover(); rec != nil {
 				log := m.getMetaLog(subsystem, name, w, r, p, make(map[string]string))
-				log.Error("PanicAutorecover", "PANIC recovered: %v", rec)
+				log.Error("PanicAutorecover", "PANIC recovered: %v\n%s", rec, string(debug.Stack()))
 				w.WriteHeader(http.StatusInternalServerError)
 			}
 		}()
