@@ -48,6 +48,8 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 		VersionBuilder: v,
 		RouterFactory:  rf,
 		WrapHandler:    shf,
+		ServerTimeout:  time.Second * 3,
+		IdleTimeout:    time.Second * 3,
 	}
 	var wrappedHandle httprouter.Handle = func(http.ResponseWriter, *http.Request, httprouter.Params) {}
 	handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
@@ -156,6 +158,8 @@ func TestServiceImpl_Run(t *testing.T) {
 		ExitFunc: func(int) {
 			fmt.Println("Exit called!")
 		},
+		ServerTimeout: time.Second * 3,
+		IdleTimeout:   time.Second * 3,
 	}
 
 	sut := servicefoundation.NewCustomService(opt)
