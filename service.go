@@ -57,6 +57,7 @@ type (
 		ShutdownFunc       ShutdownFunc
 		ExitFunc           ExitFunc
 		ServerTimeout      time.Duration
+		IdleTimeout        time.Duration
 	}
 
 	// ServiceStateReader contains state methods used by the service's handler implementations.
@@ -78,6 +79,7 @@ type (
 	serviceImpl struct {
 		globals         ServiceGlobals
 		serverTimeout   time.Duration
+		idleTimeout     time.Duration
 		port            int
 		readinessPort   int
 		internalPort    int
@@ -141,7 +143,8 @@ func NewServiceOptions(group, name string, allowedMethods []string, shutdownFunc
 
 	opt := ServiceOptions{
 		Globals:            globals,
-		ServerTimeout:      time.Second * 20,
+		ServerTimeout:      time.Second * 30,
+		IdleTimeout:        time.Second * 30,
 		Port:               port,
 		ReadinessPort:      port + 1,
 		InternalPort:       port + 2,
@@ -173,6 +176,7 @@ func NewCustomService(options ServiceOptions) Service {
 	return &serviceImpl{
 		globals:         options.Globals,
 		serverTimeout:   options.ServerTimeout,
+		idleTimeout:     options.IdleTimeout,
 		port:            options.Port,
 		readinessPort:   options.ReadinessPort,
 		internalPort:    options.InternalPort,
@@ -310,9 +314,9 @@ func (s *serviceImpl) addRoute(router *Router, subsystem, name string, routes []
 func (s *serviceImpl) runHTTPServer(port int, router *Router) {
 	addr := fmt.Sprintf(":%v", port)
 	svr := &http.Server{
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
-		IdleTimeout:  30 * time.Second,
+		ReadTimeout:  s.serverTimeout,
+		WriteTimeout: s.serverTimeout,
+		IdleTimeout:  s.idleTimeout,
 		Addr:         addr,
 		Handler:      router.Router,
 	}
