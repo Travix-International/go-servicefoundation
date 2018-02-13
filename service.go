@@ -70,7 +70,7 @@ type (
 	// Service is the main interface for ServiceFoundation and is used to define routing and running the service.
 	Service interface {
 		Run(ctx context.Context)
-		AddRoute(name string, routes []string, methods []string, middlewares []Middleware, handler Handle)
+		AddRoute(name string, routes []string, methods []string, middlewares []Middleware, metaFunc MetaFunc, handler Handle)
 	}
 
 	serviceStateReaderImpl struct {
@@ -297,13 +297,29 @@ func (s *serviceImpl) Run(ctx context.Context) {
 	// since service.ExitFunc calls os.Exit(), we'll never get here
 }
 
-func (s *serviceImpl) AddRoute(name string, routes []string, methods []string, middlewares []Middleware, handler Handle) {
-	s.addRoute(s.publicRouter, publicSubsystem, name, routes, methods, middlewares, handler)
+func (s *serviceImpl) AddRoute(name string, routes []string, methods []string, middlewares []Middleware, metaFunc MetaFunc, handler Handle) {
+	s.addRouteWithMeta(s.publicRouter, publicSubsystem, name, routes, methods, middlewares, metaFunc, handler)
 }
 
 func (s *serviceImpl) addRoute(router *Router, subsystem, name string, routes []string, methods []string, middlewares []Middleware, handler Handle) {
+	defaultMetaFunc := func(_ *http.Request, _ RouterParams) map[string]string {
+		return make(map[string]string)
+	}
+
 	for _, path := range routes {
-		wrappedHandler := s.wrapHandler.Wrap(subsystem, name, middlewares, handler)
+		wrappedHandler := s.wrapHandler.Wrap(subsystem, name, middlewares, handler, defaultMetaFunc)
+
+		for _, method := range methods {
+			router.Router.Handle(method, path, wrappedHandler)
+		}
+	}
+}
+
+func (s *serviceImpl) addRouteWithMeta(router *Router, subsystem, name string, routes []string, methods []string,
+	middlewares []Middleware, metaFunc MetaFunc, handler Handle) {
+
+	for _, path := range routes {
+		wrappedHandler := s.wrapHandler.Wrap(subsystem, name, middlewares, handler, metaFunc)
 
 		for _, method := range methods {
 			router.Router.Handle(method, path, wrappedHandler)

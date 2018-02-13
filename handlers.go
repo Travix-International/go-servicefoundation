@@ -13,7 +13,7 @@ type (
 
 	// WrapHandler is an interface for wrapping a Handle with middleware.
 	WrapHandler interface {
-		Wrap(string, string, []Middleware, Handle) httprouter.Handle
+		Wrap(string, string, []Middleware, Handle, MetaFunc) httprouter.Handle
 	}
 
 	// RootHandler is an interface to instantiate a new root handler.
@@ -91,12 +91,14 @@ func NewServiceHandlerFactory(middlewareWrapper MiddlewareWrapper, versionBuilde
 /* ServiceHandlerFactory implementation */
 
 // Wrap wraps the specified Handle with the specified middleware wrappers.
-func (f *serviceHandlerFactoryImpl) Wrap(subsystem, name string, middlewares []Middleware, handle Handle) httprouter.Handle {
+func (f *serviceHandlerFactoryImpl) Wrap(subsystem, name string, middlewares []Middleware, handle Handle,
+	metaFunc MetaFunc) httprouter.Handle {
+
 	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		h := handle
 
 		for i := 0; i < len(middlewares); i++ {
-			h = f.middlewareWrapper.Wrap(subsystem, name, middlewares[i], h)
+			h = f.middlewareWrapper.Wrap(subsystem, name, middlewares[i], h, metaFunc)
 		}
 		h(NewWrappedResponseWriter(w), r, RouterParams{Params: p})
 	}

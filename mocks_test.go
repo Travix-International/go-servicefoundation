@@ -209,8 +209,8 @@ type mockMiddlewareWrapper struct {
 	sf.MiddlewareWrapper
 }
 
-func (m *mockMiddlewareWrapper) Wrap(subsystem, name string, middleware sf.Middleware, handler sf.Handle) sf.Handle {
-	a := m.Called(subsystem, name, middleware, handler)
+func (m *mockMiddlewareWrapper) Wrap(subsystem, name string, middleware sf.Middleware, handler sf.Handle, metaFunc sf.MetaFunc) sf.Handle {
+	a := m.Called(subsystem, name, middleware, handler, metaFunc)
 	return a.Get(0).(func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams))
 }
 
@@ -233,8 +233,10 @@ type mockServiceHandlerFactory struct {
 	sf.ServiceHandlerFactory
 }
 
-func (m *mockServiceHandlerFactory) Wrap(subsystem, name string, middlewares []sf.Middleware, handle sf.Handle) httprouter.Handle {
-	a := m.Called(subsystem, name, middlewares, handle)
+func (m *mockServiceHandlerFactory) Wrap(subsystem, name string, middlewares []sf.Middleware, handle sf.Handle,
+	metaFunc sf.MetaFunc) httprouter.Handle {
+
+	a := m.Called(subsystem, name, middlewares, handle, metaFunc)
 	return a.Get(0).(httprouter.Handle)
 }
 

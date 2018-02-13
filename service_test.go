@@ -52,12 +52,15 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 		IdleTimeout:    time.Second * 3,
 	}
 	var wrappedHandle httprouter.Handle = func(http.ResponseWriter, *http.Request, httprouter.Params) {}
+	metaFunc := func(*http.Request, sf.RouterParams) map[string]string {
+		return make(map[string]string)
+	}
 	handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
 	middlewares := servicefoundation.DefaultMiddlewares
 
 	logFactory.On("NewLogger", mock.Anything).Return(log)
 	shf.
-		On("Wrap", "public", "do", middlewares, mock.AnythingOfType("Handle")).
+		On("Wrap", "public", "do", middlewares, mock.AnythingOfType("Handle"), mock.AnythingOfType("MetaFunc")).
 		Return(wrappedHandle).
 		Twice() // for each route
 	rf.
@@ -68,7 +71,7 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 	sut := servicefoundation.NewCustomService(opt)
 
 	// Act
-	sut.AddRoute("do", []string{"/do", "/do2"}, []string{http.MethodGet, http.MethodPost}, middlewares, handle)
+	sut.AddRoute("do", []string{"/do", "/do2"}, []string{http.MethodGet, http.MethodPost}, middlewares, metaFunc, handle)
 
 	shf.AssertExpectations(t)
 	rf.AssertExpectations(t)
@@ -124,7 +127,7 @@ func TestServiceImpl_Run(t *testing.T) {
 	quitH.On("NewQuitHandler").Return(handle).Once()
 	versionH.On("NewVersionHandler").Return(handle).Once()
 	shf.
-		On("Wrap", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		On("Wrap", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Return(wrappedHandle)
 	rf.
 		On("NewRouter").
