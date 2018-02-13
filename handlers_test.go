@@ -207,20 +207,23 @@ func TestServiceHandlerFactoryImpl_WrapHandler(t *testing.T) {
 	rdr := &mockReader{}
 	r, _ := http.NewRequest("GET", "https://www.sf.com/some/url", rdr)
 	w := &mockResponseWriter{}
-	called := false
+	handlerCalled := false
 	handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {
-		called = true
+		handlerCalled = true
+	}
+	metaFunc := func(*http.Request, sf.RouterParams) map[string]string {
+		return make(map[string]string)
 	}
 	ssr := &mockServiceStateReader{}
 	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn)
 
 	w.On("JSON", http.StatusOK, mock.Anything).Once()
-	m.On("Wrap", subSystem, name, sf.CORS, mock.Anything).Return(handle).Once()
-	m.On("Wrap", subSystem, name, sf.NoCaching, mock.Anything).Return(handle).Once()
+	m.On("Wrap", subSystem, name, sf.CORS, mock.Anything, mock.Anything).Return(handle).Once()
+	m.On("Wrap", subSystem, name, sf.NoCaching, mock.Anything, mock.Anything).Return(handle).Once()
 
 	// Act
-	actual := sut.Wrap(subSystem, name, []sf.Middleware{sf.CORS, sf.NoCaching}, handle)
+	actual := sut.Wrap(subSystem, name, []sf.Middleware{sf.CORS, sf.NoCaching}, handle, metaFunc)
 	actual(w, r, httprouter.Params{})
 
-	assert.True(t, called)
+	assert.True(t, handlerCalled)
 }

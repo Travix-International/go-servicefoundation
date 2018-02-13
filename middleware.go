@@ -29,12 +29,12 @@ const (
 )
 
 type (
-	// Middleware is an enumeration to indicare the available middleware wrappers.
+	// Middleware is an enumeration to indicate the available middleware wrappers.
 	Middleware int
 
 	// MiddlewareWrapper is an interface to wrap an existing handler with the specified middleware.
 	MiddlewareWrapper interface {
-		Wrap(subsystem, name string, middleware Middleware, handler Handle) Handle
+		Wrap(subsystem, name string, middleware Middleware, handler Handle, metaFunc MetaFunc) Handle
 	}
 )
 
@@ -46,7 +46,7 @@ type middlewareWrapperImpl struct {
 	corsOptions *cors.Options
 }
 
-// NewMiddlewareWrapper instantiates a new MiddelwareWrapper implementation.
+// NewMiddlewareWrapper instantiates a new MiddlewareWrapper implementation.
 func NewMiddlewareWrapper(logFactory LogFactory, metrics Metrics, corsOptions *CORSOptions, globals ServiceGlobals) MiddlewareWrapper {
 	m := &middlewareWrapperImpl{
 		log:        logFactory.NewLogger(make(map[string]string)),
@@ -60,7 +60,7 @@ func NewMiddlewareWrapper(logFactory LogFactory, metrics Metrics, corsOptions *C
 
 /* MiddlewareWrapper implementation */
 
-func (m *middlewareWrapperImpl) Wrap(subsystem, name string, middleware Middleware, handler Handle) Handle {
+func (m *middlewareWrapperImpl) Wrap(subsystem, name string, middleware Middleware, handler Handle, metaFunc MetaFunc) Handle {
 	switch middleware {
 	case CORS:
 		return m.wrapWithCORS(subsystem, name, handler)
@@ -71,9 +71,9 @@ func (m *middlewareWrapperImpl) Wrap(subsystem, name string, middleware Middlewa
 	case Histogram:
 		return m.wrapWithHistogram(subsystem, name, handler)
 	case PanicTo500:
-		return m.wrapWithPanicHandler(subsystem, name, handler)
+		return m.wrapWithPanicHandler(subsystem, name, handler, metaFunc)
 	case RequestLogging:
-		return m.wrapWithRequestLogging(subsystem, name, handler)
+		return m.wrapWithRequestLogging(subsystem, name, handler, metaFunc)
 	case RequestMetrics:
 		return m.wrapWithRequestMetrics(subsystem, name, handler)
 	default:
@@ -109,13 +109,13 @@ func (m *middlewareWrapperImpl) wrapWithHistogram(subsystem, name string, handle
 	}
 }
 
-func (m *middlewareWrapperImpl) wrapWithRequestLogging(subsystem, name string, handler Handle) Handle {
+func (m *middlewareWrapperImpl) wrapWithRequestLogging(subsystem, name string, handler Handle, metaFunc MetaFunc) Handle {
 	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
-		meta := make(map[string]string)
-		start := time.Now()
-
+		meta := metaFunc(r, p)
 		log := m.getMetaLog(subsystem, name, nil, r, p, meta)
 		log.Info("ApiRequest", m.getRequestStartMessage(r, p, meta))
+
+		start := time.Now()
 
 		handler(w, r, p)
 
@@ -263,11 +263,12 @@ func (m *middlewareWrapperImpl) mergeCORSOptions(options *CORSOptions) *cors.Opt
 	return &corsOptions
 }
 
-func (m *middlewareWrapperImpl) wrapWithPanicHandler(subsystem, name string, handler Handle) Handle {
+func (m *middlewareWrapperImpl) wrapWithPanicHandler(subsystem, name string, handler Handle, metaFunc MetaFunc) Handle {
 	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
 		defer func() {
 			if rec := recover(); rec != nil {
-				log := m.getMetaLog(subsystem, name, w, r, p, make(map[string]string))
+				meta := metaFunc(r, p)
+				log := m.getMetaLog(subsystem, name, w, r, p, meta)
 				log.Error("PanicAutorecover", "PANIC recovered: %v\n%s", rec, string(debug.Stack()))
 				w.WriteHeader(http.StatusInternalServerError)
 			}

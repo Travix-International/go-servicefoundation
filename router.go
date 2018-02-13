@@ -10,6 +10,9 @@ type (
 	// Handle is a function signature for the ServiceFoundation handlers
 	Handle func(WrappedResponseWriter, *http.Request, RouterParams)
 
+	// MetaFunc is a function that returns a map containing meta data used to enrich log messages.
+	MetaFunc func(*http.Request, RouterParams) map[string]string
+
 	// RouterParams is a struct that wraps httprouter.Params
 	RouterParams struct {
 		Params httprouter.Params

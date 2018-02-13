@@ -30,9 +30,12 @@ func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
 		log := &mockLogger{}
 		m := &mockMetrics{}
 		corsOptions := &sf.CORSOptions{}
-		called := false
+		handleCalled := false
 		handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {
-			called = true
+			handleCalled = true
+		}
+		metaFunc := func(*http.Request, sf.RouterParams) map[string]string {
+			return make(map[string]string)
 		}
 		rdr := &mockReader{}
 		r, _ := http.NewRequest("GET", "https://www.sf.com/some/url", rdr)
@@ -63,13 +66,13 @@ func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
 		sut := sf.NewMiddlewareWrapper(logFactory, m, corsOptions, sf.ServiceGlobals{})
 
 		// Act
-		actual := sut.Wrap(subSystem, name, scenario, handle)
+		actual := sut.Wrap(subSystem, name, scenario, handle, metaFunc)
 
 		assert.NotNil(t, actual, "Scenario %n", i)
 		assert.NotEqual(t, handle, actual, "Scenario %n", i)
 
 		actual(w, r, p)
-		assert.True(t, called, "Scenario %n", i)
+		assert.True(t, handleCalled, "Scenario %n", i)
 	}
 }
 
@@ -80,6 +83,9 @@ func TestMiddlewareWrapperImpl_Wrap_UnknownMiddleware_ReturnsUnwrappedHandler(t 
 	log := &mockLogger{}
 	m := &mockMetrics{}
 	corsOptions := &sf.CORSOptions{}
+	metaFunc := func(*http.Request, sf.RouterParams) map[string]string {
+		return make(map[string]string)
+	}
 	handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {
 	}
 
@@ -89,7 +95,7 @@ func TestMiddlewareWrapperImpl_Wrap_UnknownMiddleware_ReturnsUnwrappedHandler(t 
 	sut := sf.NewMiddlewareWrapper(logFactory, m, corsOptions, sf.ServiceGlobals{})
 
 	// Act
-	actual := sut.Wrap(subSystem, name, 0, handle)
+	actual := sut.Wrap(subSystem, name, 0, handle, metaFunc)
 
 	assert.NotNil(t, actual)
 	log.AssertExpectations(t)
@@ -105,6 +111,11 @@ func TestMiddlewareWrapperImpl_Wrap_PanicsAreHandled(t *testing.T) {
 		log := &mockLogger{}
 		m := &mockMetrics{}
 		corsOptions := &sf.CORSOptions{}
+		metaCalled := false
+		metaFunc := func(*http.Request, sf.RouterParams) map[string]string {
+			metaCalled = true
+			return make(map[string]string)
+		}
 		handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {
 			panic("whoa")
 		}
@@ -122,12 +133,14 @@ func TestMiddlewareWrapperImpl_Wrap_PanicsAreHandled(t *testing.T) {
 		sut := sf.NewMiddlewareWrapper(logFactory, m, corsOptions, sf.ServiceGlobals{})
 
 		// Act
-		actual := sut.Wrap(subSystem, name, scenario, handle)
+		actual := sut.Wrap(subSystem, name, scenario, handle, metaFunc)
 
 		assert.NotNil(t, actual, "Scenario %n", i)
 		assert.NotEqual(t, handle, actual, "Scenario %n", i)
+		assert.False(t, metaCalled, "Scenario %n", i)
 
 		actual(w, r, p)
+		assert.True(t, metaCalled, "Scenario %n", i)
 		log.AssertExpectations(t)
 		w.AssertExpectations(t)
 	}
