@@ -120,8 +120,8 @@ func TestServiceImpl_Run(t *testing.T) {
 	log.On("Debug", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	v.On("ToString").Return("(version)")
 	rootH.On("NewRootHandler").Return(handle).Times(3)
-	livenessH.On("NewLivenessHandler").Return(handle)
-	readinessH.On("NewReadinessHandler").Return(handle)
+	livenessH.On("NewLivenessHandler").Return(handle).Times(2)
+	readinessH.On("NewReadinessHandler").Return(handle).Times(2)
 	healthH.On("NewHealthHandler").Return(handle).Once()
 	metricsH.On("NewMetricsHandler").Return(handle).Once()
 	quitH.On("NewQuitHandler").Return(handle).Once()
@@ -161,8 +161,9 @@ func TestServiceImpl_Run(t *testing.T) {
 		ExitFunc: func(int) {
 			fmt.Println("Exit called!")
 		},
-		ServerTimeout: time.Second * 3,
-		IdleTimeout:   time.Second * 3,
+		ServerTimeout:        time.Second * 3,
+		IdleTimeout:          time.Second * 3,
+		UsePublicRootHandler: true,
 	}
 
 	sut := servicefoundation.NewCustomService(opt)
@@ -173,6 +174,119 @@ func TestServiceImpl_Run(t *testing.T) {
 	time.Sleep(11 * time.Millisecond)
 	shf.AssertExpectations(t)
 	rf.AssertExpectations(t)
+	rootH.AssertExpectations(t)
+	livenessH.AssertExpectations(t)
+	readinessH.AssertExpectations(t)
+	healthH.AssertExpectations(t)
+	metricsH.AssertExpectations(t)
+	quitH.AssertExpectations(t)
+	versionH.AssertExpectations(t)
+}
+
+func TestServiceImpl_Run_NoPublicRootHandler(t *testing.T) {
+	logFactory := &mockLogFactory{}
+	log := &mockLogger{}
+	m := &mockMetrics{}
+	v := &mockVersionBuilder{}
+	rf := &mockRouterFactory{}
+	shf := &mockServiceHandlerFactory{}
+
+	publicRouter := &sf.Router{
+		Router: &httprouter.Router{},
+	}
+	readinessRouter := &sf.Router{
+		Router: &httprouter.Router{},
+	}
+	internalRouter := &sf.Router{
+		Router: &httprouter.Router{},
+	}
+	var wrappedHandle httprouter.Handle = func(http.ResponseWriter, *http.Request, httprouter.Params) {}
+	var handle sf.Handle = func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
+
+	quitH := &mockQuitHandler{}
+	rootH := &mockRootHandler{}
+	livenessH := &mockLivenessHandler{}
+	versionH := &mockVersionHandler{}
+	readinessH := &mockReadinessHandler{}
+	metricsH := &mockMetricsHandler{}
+	healthH := &mockHealthHandler{}
+
+	handlers := &sf.Handlers{
+		QuitHandler:      quitH,
+		MetricsHandler:   metricsH,
+		VersionHandler:   versionH,
+		HealthHandler:    healthH,
+		LivenessHandler:  livenessH,
+		ReadinessHandler: readinessH,
+		RootHandler:      rootH,
+	}
+
+	logFactory.On("NewLogger", mock.Anything).Return(log)
+	log.On("Info", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	log.On("Debug", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	v.On("ToString").Return("(version)")
+	rootH.On("NewRootHandler").Return(handle).Times(2)
+	livenessH.On("NewLivenessHandler").Return(handle).Times(2)
+	readinessH.On("NewReadinessHandler").Return(handle).Times(2)
+	healthH.On("NewHealthHandler").Return(handle).Once()
+	metricsH.On("NewMetricsHandler").Return(handle).Once()
+	quitH.On("NewQuitHandler").Return(handle).Once()
+	versionH.On("NewVersionHandler").Return(handle).Once()
+	shf.
+		On("Wrap", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Return(wrappedHandle)
+	rf.
+		On("NewRouter").
+		Return(readinessRouter).
+		Once()
+	rf.
+		On("NewRouter").
+		Return(internalRouter).
+		Once()
+	rf.
+		On("NewRouter").
+		Return(publicRouter).
+		Once()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+
+	opt := sf.ServiceOptions{
+		Globals: sf.ServiceGlobals{
+			AppName: "test-service",
+		},
+		LogFactory:     logFactory,
+		Metrics:        m,
+		Port:           1234,
+		ReadinessPort:  1235,
+		InternalPort:   1236,
+		ShutdownFunc:   func(log sf.Logger) {},
+		VersionBuilder: v,
+		RouterFactory:  rf,
+		Handlers:       handlers,
+		WrapHandler:    shf,
+		ExitFunc: func(int) {
+			fmt.Println("Exit called!")
+		},
+		ServerTimeout:        time.Second * 3,
+		IdleTimeout:          time.Second * 3,
+		UsePublicRootHandler: false,
+	}
+
+	sut := servicefoundation.NewCustomService(opt)
+
+	// Act
+	go sut.Run(ctx)
+
+	time.Sleep(11 * time.Millisecond)
+	shf.AssertExpectations(t)
+	rf.AssertExpectations(t)
+	rootH.AssertExpectations(t)
+	livenessH.AssertExpectations(t)
+	readinessH.AssertExpectations(t)
+	healthH.AssertExpectations(t)
+	metricsH.AssertExpectations(t)
+	quitH.AssertExpectations(t)
+	versionH.AssertExpectations(t)
 }
 
 func TestNewExitFunc(t *testing.T) {
