@@ -163,6 +163,10 @@ func main() {
 	opt.ServiceStateReader = stateReader
 	opt.SetHandlers() // Required to re-bind the state to the ReadinessHandler
 
+	// Use this in case you want to handle the public root endpoint yourself instead of relying 
+	// on the default catch-all handling.
+	opt.UsePublicRootHandler = true
+
 	svc := sf.NewCustomService(opt)
 
 	svc.AddRoute(
