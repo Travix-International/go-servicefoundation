@@ -20,6 +20,7 @@ ServiceFoundation enables you to create Web Services containing:
 * Support service warm-up through state customization
 * Standardized metrics (defaults to go-metrics)
 * Standardized log messages in JSON format
+* Adding route-specific meta fields to log messages
 
 To do:
 - [ ] De-duplicate CORS elements in slices
@@ -65,6 +66,7 @@ func main() {
 		[]string{"/helloworld"},
 		sf.MethodsForGet,
 		[]sf.Middleware{sf.PanicTo500, sf.CORS, sf.RequestMetrics},
+		func() sf.MetaFunc { return make(map[string]string) },
 		func(w sf.WrappedResponseWriter, _ *http.Request, _ sf.RouterParams) {
 			w.JSON(http.StatusOK, "hello world!")
 		})
@@ -145,8 +147,9 @@ func main() {
 		stateReader.isWarmedUp = true
 	}()
 
-    meta := make(map[string]string)
-    meta["hello"] = "world"
+    // Use a global meta for logging additional fields during the service lifecycle
+    globalMeta := make(map[string]string)
+    globalMeta["hello"] = "world"
 
 	opt := sf.NewServiceOptions(
 		"AppGroup", "HelloWorldService",
@@ -156,9 +159,13 @@ func main() {
 			GitHash:       gitHash,
 			VersionNumber: versionNumber,
 			BuildDate:     buildDate,
-		}, meta)
+		}, globalMeta)
 	opt.ServiceStateReader = stateReader
 	opt.SetHandlers() // Required to re-bind the state to the ReadinessHandler
+
+	// Use this in case you want to handle the public root endpoint yourself instead of relying 
+	// on the default catch-all handling.
+	opt.UsePublicRootHandler = true
 
 	svc := sf.NewCustomService(opt)
 
@@ -167,6 +174,12 @@ func main() {
 		[]string{"/helloworld"},
 		sf.MethodsForGet,
 		[]sf.Middleware{sf.PanicTo500, sf.CORS, sf.RequestMetrics},
+		func() sf.MetaFunc { 
+            // Use a route-specific meta to log additional fields for handling a route request 
+            routeMeta := make(map[string]string)
+            routeMeta["hello"] = "route"
+			return routeMeta 
+		},
 		func(w sf.WrappedResponseWriter, _ *http.Request, _ sf.RouterParams) {
 			w.JSON(http.StatusOK, "hello world!")
 		})
@@ -174,6 +187,5 @@ func main() {
 	svc.Run(context.Background()) // blocks execution
 }
 ```
-
 
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg)](https://github.com/Travix-International/go-servicefoundation/blob/master/LICENSE)

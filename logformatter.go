@@ -23,8 +23,8 @@ type (
 )
 
 var (
-	logEntryMissingLevelError = errors.New("Missing level in log entry")
-	logEntryMissingEventError = errors.New("Missing event in log entry")
+	errLogEntryMissingLevel = errors.New("Missing level in log entry")
+	errLogEntryMissingEvent = errors.New("Missing event in log entry")
 )
 
 /* LogFormatter implementation */
@@ -40,10 +40,10 @@ func (f *logFormatterImpl) Format(entry *logger.Entry) (string, error) {
 	}
 
 	if entry.Level == "" {
-		return "", logEntryMissingLevelError
+		return "", errLogEntryMissingLevel
 	}
 	if entry.Event == "" {
-		return "", logEntryMissingEventError
+		return "", errLogEntryMissingEvent
 	}
 
 	var logEntry flatLogEntry = make(map[string]interface{})
