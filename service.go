@@ -335,11 +335,26 @@ func (s *serviceImpl) addRouteWithMetaAndPreFlight(router *Router, subsystem, na
 			continue
 		}
 
-		preFlightHandler := s.handlers.PreFlightHandler.NewPreFlightHandler()
-		wrappedPreFlightHandler := s.wrapHandler.Wrap(subsystem, fmt.Sprintf("%v-preflight", name),
-			[]Middleware{Counter}, preFlightHandler, metaFunc)
-		router.Router.Handle(http.MethodOptions, path, wrappedPreFlightHandler)
+		s.addPreFlightHandle(subsystem, name, middlewares, metaFunc, router, path)
 	}
+}
+
+func (s *serviceImpl) addPreFlightHandle(subsystem string, name string, middlewares []Middleware, metaFunc MetaFunc,
+	router *Router, path string) {
+
+	preFlightMiddlewares := []Middleware{Counter}
+
+	for _, m := range middlewares {
+		if m != CORS {
+			continue
+		}
+		preFlightMiddlewares = append([]Middleware{CORS}, preFlightMiddlewares...)
+	}
+
+	preFlightHandler := s.handlers.PreFlightHandler.NewPreFlightHandler()
+	wrappedPreFlightHandler := s.wrapHandler.Wrap(subsystem, fmt.Sprintf("%v-preflight", name),
+		preFlightMiddlewares, preFlightHandler, metaFunc)
+	router.Router.Handle(http.MethodOptions, path, wrappedPreFlightHandler)
 }
 
 func (s *serviceImpl) runHTTPServer(port int, router *Router) {

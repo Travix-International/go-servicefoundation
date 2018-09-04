@@ -89,6 +89,79 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 	preFlightH.AssertExpectations(t)
 }
 
+func TestServiceImpl_AddRouteWithCORS(t *testing.T) {
+	logFactory := &mockLogFactory{}
+	log := &mockLogger{}
+	m := &mockMetrics{}
+	v := &mockVersionBuilder{}
+	rf := &mockRouterFactory{}
+	shf := &mockServiceHandlerFactory{}
+	preFlightH := &mockPreFlightHandler{}
+
+	handlers := &sf.Handlers{
+		PreFlightHandler: preFlightH,
+	}
+	router := &sf.Router{
+		Router: &httprouter.Router{},
+	}
+	opt := sf.ServiceOptions{
+		Globals: sf.ServiceGlobals{
+			AppName: "test-service",
+		},
+		LogFactory:     logFactory,
+		Metrics:        m,
+		Port:           1234,
+		ReadinessPort:  1235,
+		InternalPort:   1236,
+		ShutdownFunc:   func(log sf.Logger) {},
+		VersionBuilder: v,
+		RouterFactory:  rf,
+		Handlers:       handlers,
+		WrapHandler:    shf,
+		ServerTimeout:  time.Second * 3,
+		IdleTimeout:    time.Second * 3,
+	}
+	var wrappedHandle httprouter.Handle = func(http.ResponseWriter, *http.Request, httprouter.Params) {}
+	metaFunc := func(*http.Request, sf.RouterParams) map[string]string {
+		return make(map[string]string)
+	}
+	var preFlightHandle sf.Handle = func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
+	handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
+	middlewares := append([]sf.Middleware{sf.CORS}, servicefoundation.DefaultMiddlewares...)
+	hasPreFlightCORS := false
+
+	logFactory.On("NewLogger", mock.Anything).Return(log)
+	shf.
+		On("Wrap", "public", "do", middlewares, mock.AnythingOfType("Handle"), mock.AnythingOfType("MetaFunc")).
+		Return(wrappedHandle).
+		Once()
+	shf.
+		On("Wrap", "public", "do-preflight", mock.Anything, mock.AnythingOfType("Handle"), mock.AnythingOfType("MetaFunc")).
+		Run(func(args mock.Arguments) {
+			mw := args.Get(2).([]sf.Middleware)
+			for _, m := range mw {
+				hasPreFlightCORS = hasPreFlightCORS || m == sf.CORS
+			}
+		}).
+		Return(wrappedHandle).
+		Once()
+	rf.
+		On("NewRouter").
+		Return(router).
+		Times(3) // public, readiness and internal
+	preFlightH.On("NewPreFlightHandler").Return(preFlightHandle)
+
+	sut := servicefoundation.NewCustomService(opt)
+
+	// Act
+	sut.AddRoute("do", []string{"/do"}, []string{http.MethodGet}, middlewares, metaFunc, handle)
+
+	shf.AssertExpectations(t)
+	rf.AssertExpectations(t)
+	preFlightH.AssertExpectations(t)
+	assert.True(t, hasPreFlightCORS)
+}
+
 func TestServiceImpl_AddRouteWithHandledPreFlight(t *testing.T) {
 	logFactory := &mockLogFactory{}
 	log := &mockLogger{}
