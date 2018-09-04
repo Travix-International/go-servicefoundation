@@ -21,6 +21,7 @@ ServiceFoundation enables you to create Web Services containing:
 * Standardized metrics (defaults to go-metrics)
 * Standardized log messages in JSON format
 * Adding route-specific meta fields to log messages
+* Default handling of pre-flight requests
 
 To do:
 - [ ] De-duplicate CORS elements in slices
