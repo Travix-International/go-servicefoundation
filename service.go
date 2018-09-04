@@ -302,7 +302,7 @@ func (s *serviceImpl) Run(ctx context.Context) {
 }
 
 func (s *serviceImpl) AddRoute(name string, routes []string, methods []string, middlewares []Middleware, metaFunc MetaFunc, handler Handle) {
-	s.addRouteWithMeta(s.publicRouter, publicSubsystem, name, routes, methods, middlewares, metaFunc, handler)
+	s.addRouteWithMetaAndPreFlight(s.publicRouter, publicSubsystem, name, routes, methods, middlewares, metaFunc, handler)
 }
 
 func (s *serviceImpl) addRoute(router *Router, subsystem, name string, routes []string, methods []string, middlewares []Middleware, handler Handle) {
@@ -319,15 +319,26 @@ func (s *serviceImpl) addRoute(router *Router, subsystem, name string, routes []
 	}
 }
 
-func (s *serviceImpl) addRouteWithMeta(router *Router, subsystem, name string, routes []string, methods []string,
+func (s *serviceImpl) addRouteWithMetaAndPreFlight(router *Router, subsystem, name string, routes []string, methods []string,
 	middlewares []Middleware, metaFunc MetaFunc, handler Handle) {
 
 	for _, path := range routes {
 		wrappedHandler := s.wrapHandler.Wrap(subsystem, name, middlewares, handler, metaFunc)
+		preFlightHandled := false
 
 		for _, method := range methods {
 			router.Router.Handle(method, path, wrappedHandler)
+			preFlightHandled = preFlightHandled || method == http.MethodOptions
 		}
+
+		if preFlightHandled {
+			continue
+		}
+
+		preFlightHandler := s.handlers.PreFlightHandler.NewPreFlightHandler()
+		wrappedPreFlightHandler := s.wrapHandler.Wrap(subsystem, fmt.Sprintf("%v-preflight", name),
+			[]Middleware{Counter}, preFlightHandler, metaFunc)
+		router.Router.Handle(http.MethodOptions, path, wrappedPreFlightHandler)
 	}
 }
 

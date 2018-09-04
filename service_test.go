@@ -31,7 +31,11 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 	v := &mockVersionBuilder{}
 	rf := &mockRouterFactory{}
 	shf := &mockServiceHandlerFactory{}
+	preFlightH := &mockPreFlightHandler{}
 
+	handlers := &sf.Handlers{
+		PreFlightHandler: preFlightH,
+	}
 	router := &sf.Router{
 		Router: &httprouter.Router{},
 	}
@@ -47,6 +51,72 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 		ShutdownFunc:   func(log sf.Logger) {},
 		VersionBuilder: v,
 		RouterFactory:  rf,
+		Handlers:       handlers,
+		WrapHandler:    shf,
+		ServerTimeout:  time.Second * 3,
+		IdleTimeout:    time.Second * 3,
+	}
+	var wrappedHandle httprouter.Handle = func(http.ResponseWriter, *http.Request, httprouter.Params) {}
+	metaFunc := func(*http.Request, sf.RouterParams) map[string]string {
+		return make(map[string]string)
+	}
+	var preFlightHandle sf.Handle = func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
+	handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
+	middlewares := servicefoundation.DefaultMiddlewares
+
+	logFactory.On("NewLogger", mock.Anything).Return(log)
+	shf.
+		On("Wrap", "public", "do", middlewares, mock.AnythingOfType("Handle"), mock.AnythingOfType("MetaFunc")).
+		Return(wrappedHandle).
+		Twice() // for each route
+	shf.
+		On("Wrap", "public", "do-preflight", mock.Anything, mock.AnythingOfType("Handle"), mock.AnythingOfType("MetaFunc")).
+		Return(wrappedHandle).
+		Twice() // for each route
+	rf.
+		On("NewRouter").
+		Return(router).
+		Times(3) // public, readiness and internal
+	preFlightH.On("NewPreFlightHandler").Return(preFlightHandle)
+
+	sut := servicefoundation.NewCustomService(opt)
+
+	// Act
+	sut.AddRoute("do", []string{"/do", "/do2"}, []string{http.MethodGet, http.MethodPost}, middlewares, metaFunc, handle)
+
+	shf.AssertExpectations(t)
+	rf.AssertExpectations(t)
+	preFlightH.AssertExpectations(t)
+}
+
+func TestServiceImpl_AddRouteWithHandledPreFlight(t *testing.T) {
+	logFactory := &mockLogFactory{}
+	log := &mockLogger{}
+	m := &mockMetrics{}
+	v := &mockVersionBuilder{}
+	rf := &mockRouterFactory{}
+	shf := &mockServiceHandlerFactory{}
+	preFlightH := &mockPreFlightHandler{}
+
+	handlers := &sf.Handlers{
+		PreFlightHandler: preFlightH,
+	}
+	router := &sf.Router{
+		Router: &httprouter.Router{},
+	}
+	opt := sf.ServiceOptions{
+		Globals: sf.ServiceGlobals{
+			AppName: "test-service",
+		},
+		LogFactory:     logFactory,
+		Metrics:        m,
+		Port:           1234,
+		ReadinessPort:  1235,
+		InternalPort:   1236,
+		ShutdownFunc:   func(log sf.Logger) {},
+		VersionBuilder: v,
+		RouterFactory:  rf,
+		Handlers:       handlers,
 		WrapHandler:    shf,
 		ServerTimeout:  time.Second * 3,
 		IdleTimeout:    time.Second * 3,
@@ -60,9 +130,10 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 
 	logFactory.On("NewLogger", mock.Anything).Return(log)
 	shf.
-		On("Wrap", "public", "do", middlewares, mock.AnythingOfType("Handle"), mock.AnythingOfType("MetaFunc")).
+		On("Wrap", "public", "do", middlewares, mock.AnythingOfType("Handle"),
+			mock.AnythingOfType("MetaFunc")).
 		Return(wrappedHandle).
-		Twice() // for each route
+		Once()
 	rf.
 		On("NewRouter").
 		Return(router).
@@ -71,7 +142,7 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 	sut := servicefoundation.NewCustomService(opt)
 
 	// Act
-	sut.AddRoute("do", []string{"/do", "/do2"}, []string{http.MethodGet, http.MethodPost}, middlewares, metaFunc, handle)
+	sut.AddRoute("do", []string{"/do"}, []string{http.MethodGet, http.MethodOptions}, middlewares, metaFunc, handle)
 
 	shf.AssertExpectations(t)
 	rf.AssertExpectations(t)
@@ -104,6 +175,7 @@ func TestServiceImpl_Run(t *testing.T) {
 	readinessH := &mockReadinessHandler{}
 	metricsH := &mockMetricsHandler{}
 	healthH := &mockHealthHandler{}
+	preFlightH := &mockPreFlightHandler{}
 
 	handlers := &sf.Handlers{
 		QuitHandler:      quitH,
@@ -113,6 +185,7 @@ func TestServiceImpl_Run(t *testing.T) {
 		LivenessHandler:  livenessH,
 		ReadinessHandler: readinessH,
 		RootHandler:      rootH,
+		PreFlightHandler: preFlightH,
 	}
 
 	logFactory.On("NewLogger", mock.Anything).Return(log)
@@ -120,8 +193,8 @@ func TestServiceImpl_Run(t *testing.T) {
 	log.On("Debug", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	v.On("ToString").Return("(version)")
 	rootH.On("NewRootHandler").Return(handle).Times(3)
-	livenessH.On("NewLivenessHandler").Return(handle).Times(2)
-	readinessH.On("NewReadinessHandler").Return(handle).Times(2)
+	livenessH.On("NewLivenessHandler").Return(handle).Twice()
+	readinessH.On("NewReadinessHandler").Return(handle).Twice()
 	healthH.On("NewHealthHandler").Return(handle).Once()
 	metricsH.On("NewMetricsHandler").Return(handle).Once()
 	quitH.On("NewQuitHandler").Return(handle).Once()
@@ -210,6 +283,7 @@ func TestServiceImpl_Run_NoPublicRootHandler(t *testing.T) {
 	readinessH := &mockReadinessHandler{}
 	metricsH := &mockMetricsHandler{}
 	healthH := &mockHealthHandler{}
+	preFlightH := &mockPreFlightHandler{}
 
 	handlers := &sf.Handlers{
 		QuitHandler:      quitH,
@@ -219,15 +293,16 @@ func TestServiceImpl_Run_NoPublicRootHandler(t *testing.T) {
 		LivenessHandler:  livenessH,
 		ReadinessHandler: readinessH,
 		RootHandler:      rootH,
+		PreFlightHandler: preFlightH,
 	}
 
 	logFactory.On("NewLogger", mock.Anything).Return(log)
 	log.On("Info", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	log.On("Debug", mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	v.On("ToString").Return("(version)")
-	rootH.On("NewRootHandler").Return(handle).Times(2)
-	livenessH.On("NewLivenessHandler").Return(handle).Times(2)
-	readinessH.On("NewReadinessHandler").Return(handle).Times(2)
+	rootH.On("NewRootHandler").Return(handle).Twice()
+	livenessH.On("NewLivenessHandler").Return(handle).Twice()
+	readinessH.On("NewReadinessHandler").Return(handle).Twice()
 	healthH.On("NewHealthHandler").Return(handle).Once()
 	metricsH.On("NewMetricsHandler").Return(handle).Once()
 	quitH.On("NewQuitHandler").Return(handle).Once()

@@ -329,6 +329,19 @@ func (m *mockMetricsHandler) NewMetricsHandler() sf.Handle {
 	return a.Get(0).(sf.Handle)
 }
 
+/* sf.PreFlightHandler mock */
+
+type mockPreFlightHandler struct {
+	mock.Mock
+	sf.PreFlightHandler
+}
+
+func (m *mockPreFlightHandler) NewPreFlightHandler() sf.Handle {
+	a := m.Called()
+	return a.Get(0).(sf.Handle)
+}
+
+
 /* sf.ServiceStateReader mock */
 
 type mockServiceStateReader struct {
