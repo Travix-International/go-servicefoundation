@@ -6,7 +6,7 @@ SERVER_NAME := "servicefoundation-1234"
 DEPLOY_ENVIRONMENT := "staging"
 
 cover-remote:
-	go get -u github.com/golang/lint/golint
+	go get -u golang.org/x/lint/golint
 	go get -u github.com/mattn/goveralls
 	go get -u github.com/golang/dep/cmd/dep
 	dep ensure
