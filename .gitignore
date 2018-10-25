@@ -23,8 +23,7 @@ _testmain.go
 *.test
 *.prof
 
-vendor/*
-!vendor/manifest
-.idea/misc.xml
+vendor
+.idea
+.vscode
 cover.tmp
-.idea/workspace.xml
