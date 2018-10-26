@@ -51,6 +51,11 @@ type (
 		NewQuitHandler() Handle
 	}
 
+	// QuitHandler is an interface to instantiate a new quit handler.
+	PreFlightHandler interface {
+		NewPreFlightHandler() Handle
+	}
+
 	// ServiceHandlerFactory is an interface to get access to implemented handlers.
 	ServiceHandlerFactory interface {
 		NewHandlers() *Handlers
@@ -66,6 +71,7 @@ type (
 		VersionHandler   VersionHandler
 		MetricsHandler   MetricsHandler
 		QuitHandler      QuitHandler
+		PreFlightHandler PreFlightHandler
 	}
 
 	serviceHandlerFactoryImpl struct {
@@ -114,6 +120,7 @@ func (f *serviceHandlerFactoryImpl) NewHandlers() *Handlers {
 		HealthHandler:    f,
 		LivenessHandler:  f,
 		ReadinessHandler: f,
+		PreFlightHandler: f,
 	}
 }
 
@@ -175,5 +182,11 @@ func (f *serviceHandlerFactoryImpl) NewVersionHandler() Handle {
 func (f *serviceHandlerFactoryImpl) NewMetricsHandler() Handle {
 	return func(w WrappedResponseWriter, r *http.Request, _ RouterParams) {
 		promhttp.Handler().ServeHTTP(w, r)
+	}
+}
+
+func (f *serviceHandlerFactoryImpl) NewPreFlightHandler() Handle {
+	return func(w WrappedResponseWriter, _ *http.Request, _ RouterParams) {
+		w.WriteHeader(http.StatusOK)
 	}
 }

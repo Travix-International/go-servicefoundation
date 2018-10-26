@@ -198,6 +198,23 @@ func TestServiceHandlerFactoryImpl_CreateQuitHandler(t *testing.T) {
 	assert.True(t, called)
 }
 
+func TestServiceHandlerFactoryImpl_CreatePreFlightHandler(t *testing.T) {
+	m := &mockMiddlewareWrapper{}
+	v := &mockVersionBuilder{}
+	exitFn := func(int) {}
+	w := &mockResponseWriter{}
+	ssr := &mockServiceStateReader{}
+	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn)
+
+	w.On("WriteHeader", http.StatusOK).Once()
+
+	// Act
+	actual := sut.NewHandlers().PreFlightHandler.NewPreFlightHandler()
+	actual(w, nil, sf.RouterParams{})
+
+	w.AssertExpectations(t)
+}
+
 func TestServiceHandlerFactoryImpl_WrapHandler(t *testing.T) {
 	const subSystem = "my-sub"
 	const name = "my-name"

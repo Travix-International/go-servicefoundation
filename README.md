@@ -21,6 +21,7 @@ ServiceFoundation enables you to create Web Services containing:
 * Standardized metrics (defaults to go-metrics)
 * Standardized log messages in JSON format
 * Adding route-specific meta fields to log messages
+* Default handling of pre-flight requests
 
 To do:
 - [ ] De-duplicate CORS elements in slices
@@ -66,7 +67,9 @@ func main() {
 		[]string{"/helloworld"},
 		sf.MethodsForGet,
 		[]sf.Middleware{sf.PanicTo500, sf.CORS, sf.RequestMetrics},
-		func() sf.MetaFunc { return make(map[string]string) },
+		func(r *http.Request, _ sf.RouterParams) map[string]string {
+        		return make(map[string]string)
+        },
 		func(w sf.WrappedResponseWriter, _ *http.Request, _ sf.RouterParams) {
 			w.JSON(http.StatusOK, "hello world!")
 		})
@@ -174,12 +177,12 @@ func main() {
 		[]string{"/helloworld"},
 		sf.MethodsForGet,
 		[]sf.Middleware{sf.PanicTo500, sf.CORS, sf.RequestMetrics},
-		func() sf.MetaFunc { 
+		func(r *http.Request, _ sf.RouterParams) map[string]string {
             // Use a route-specific meta to log additional fields for handling a route request 
             routeMeta := make(map[string]string)
             routeMeta["hello"] = "route"
 			return routeMeta 
-		},
+        },
 		func(w sf.WrappedResponseWriter, _ *http.Request, _ sf.RouterParams) {
 			w.JSON(http.StatusOK, "hello world!")
 		})
