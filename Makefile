@@ -14,16 +14,16 @@ cover-remote:
 	goveralls -service travis-ci -coverprofile cover.tmp
 
 run-tests:
-	go test -race -cover -v `go list ./... | grep -v /vendor/`
+	go test -race -cover -v ./...
 
 cover:
-	go test -cover `go list ./... | grep -v /vendor/`
+	go test -cover ./...
 
 lint:
-	golint `go list ./... | grep -v /vendor/`
+	golint ./...
 
 vet:
-	go vet `go list ./... | grep -v /vendor/`
+	go vet ./...
 
 clean:
 	go clean

@@ -164,11 +164,11 @@ func TestServiceHandlerFactoryImpl_CreateMetricsHandler(t *testing.T) {
 	ssr := &mockServiceStateReader{}
 	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn)
 
+	w.On("WriteHeader", http.StatusOK).Once()
 	w.On("Header").Return(http.Header{}).Once()
 	w.
 		On("Write", mock.Anything).
-		Return(0, nil).
-		Once()
+		Return(0, nil)
 
 	// Act
 	actual := sut.NewHandlers().MetricsHandler.NewMetricsHandler()

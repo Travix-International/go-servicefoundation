@@ -99,24 +99,20 @@ type mockLogger struct {
 	sf.Logger
 }
 
-func (m *mockLogger) Debug(event, formatOrMsg string, a ...interface{}) error {
-	i := m.Called(event, formatOrMsg, a)
-	return i.Error(0)
+func (m *mockLogger) Debug(event, formatOrMsg string, a ...interface{}) {
+	m.Called(event, formatOrMsg, a)
 }
 
-func (m *mockLogger) Info(event, formatOrMsg string, a ...interface{}) error {
-	i := m.Called(event, formatOrMsg, a)
-	return i.Error(0)
+func (m *mockLogger) Info(event, formatOrMsg string, a ...interface{}) {
+	m.Called(event, formatOrMsg, a)
 }
 
-func (m *mockLogger) Warn(event, formatOrMsg string, a ...interface{}) error {
-	i := m.Called(event, formatOrMsg, a)
-	return i.Error(0)
+func (m *mockLogger) Warn(event, formatOrMsg string, a ...interface{}) {
+	m.Called(event, formatOrMsg, a)
 }
 
-func (m *mockLogger) Error(event, formatOrMsg string, a ...interface{}) error {
-	i := m.Called(event, formatOrMsg, a)
-	return i.Error(0)
+func (m *mockLogger) Error(event, formatOrMsg string, a ...interface{}) {
+	m.Called(event, formatOrMsg, a)
 }
 
 func (m *mockLogger) GetLogger() *logger.Logger {
@@ -340,7 +336,6 @@ func (m *mockPreFlightHandler) NewPreFlightHandler() sf.Handle {
 	a := m.Called()
 	return a.Get(0).(sf.Handle)
 }
-
 
 /* sf.ServiceStateReader mock */
 

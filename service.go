@@ -369,7 +369,7 @@ func (s *serviceImpl) runHTTPServer(port int, router *Router) {
 
 	go func() {
 		// Blocking until the server stops.
-		svr.ListenAndServe()
+		_ = svr.ListenAndServe()
 
 		// Notify the service that the server has stopped.
 		s.receiveChan <- true
@@ -381,7 +381,10 @@ func (s *serviceImpl) runHTTPServer(port int, router *Router) {
 		case sig := <-s.sendChan:
 			// Properly close the server if possible.
 			if svr != nil {
-				svr.Close()
+				err := svr.Close()
+				if err != nil {
+					s.log.Error("CloseServer", err.Error())
+				}
 				svr = nil
 			}
 			// Continue sending the message

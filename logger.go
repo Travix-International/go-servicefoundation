@@ -18,10 +18,10 @@ const (
 type (
 	// Logger is a wrapper around the Logger package and extending it with log level filtering and simplified formatting.
 	Logger interface {
-		Debug(event, formatOrMsg string, a ...interface{}) error
-		Info(event, formatOrMsg string, a ...interface{}) error
-		Warn(event, formatOrMsg string, a ...interface{}) error
-		Error(event, formatOrMsg string, a ...interface{}) error
+		Debug(event, formatOrMsg string, a ...interface{})
+		Info(event, formatOrMsg string, a ...interface{})
+		Warn(event, formatOrMsg string, a ...interface{})
+		Error(event, formatOrMsg string, a ...interface{})
 		GetLogger() *logger.Logger
 	}
 
@@ -101,45 +101,49 @@ func combineMetas(meta1, meta2 map[string]string) map[string]string {
 
 /* Logger implementation */
 
-func (l *loggerImpl) Debug(event, formatOrMsg string, a ...interface{}) error {
+func (l *loggerImpl) Debug(event, formatOrMsg string, a ...interface{}) {
 	if l.logMinLevel > minDebugLevel {
-		return nil
+		return
 	}
 
 	if len(a) == 0 {
-		return l.logger.Debug(event, formatOrMsg)
+		_ = l.logger.Debug(event, formatOrMsg)
+		return
 	}
-	return l.logger.Debug(event, fmt.Sprintf(formatOrMsg, a...))
+	_ = l.logger.Debug(event, fmt.Sprintf(formatOrMsg, a...))
 }
 
-func (l *loggerImpl) Info(event, formatOrMsg string, a ...interface{}) error {
+func (l *loggerImpl) Info(event, formatOrMsg string, a ...interface{}) {
 	if l.logMinLevel > minInfoLevel {
-		return nil
+		return
 	}
 
 	if len(a) == 0 {
-		return l.logger.Info(event, formatOrMsg)
+		_ = l.logger.Info(event, formatOrMsg)
+		return
 	}
 	msg := fmt.Sprintf(formatOrMsg, a...)
-	return l.logger.Info(event, msg)
+	_ = l.logger.Info(event, msg)
 }
 
-func (l *loggerImpl) Warn(event, formatOrMsg string, a ...interface{}) error {
+func (l *loggerImpl) Warn(event, formatOrMsg string, a ...interface{}) {
 	if l.logMinLevel > minWarnLevel {
-		return nil
+		return
 	}
 
 	if len(a) == 0 {
-		return l.logger.Warn(event, formatOrMsg)
+		_ = l.logger.Warn(event, formatOrMsg)
+		return
 	}
-	return l.logger.Warn(event, fmt.Sprintf(formatOrMsg, a...))
+	_ = l.logger.Warn(event, fmt.Sprintf(formatOrMsg, a...))
 }
 
-func (l *loggerImpl) Error(event, formatOrMsg string, a ...interface{}) error {
+func (l *loggerImpl) Error(event, formatOrMsg string, a ...interface{}) {
 	if len(a) == 0 {
-		return l.logger.Error(event, formatOrMsg)
+		_ = l.logger.Error(event, formatOrMsg)
+		return
 	}
-	return l.logger.Error(event, fmt.Sprintf(formatOrMsg, a...))
+	_ = l.logger.Error(event, fmt.Sprintf(formatOrMsg, a...))
 }
 
 func (l *loggerImpl) GetLogger() *logger.Logger {

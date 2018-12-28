@@ -61,18 +61,18 @@ func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
 		m.On("AddHistogramVec", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(h)
 		m.On("AddSummaryVec", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(s)
 		logFactory.On("NewLogger", mock.Anything).Return(log)
-		log.On("Info", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+		log.On("Info", mock.Anything, mock.Anything, mock.Anything)
 
 		sut := sf.NewMiddlewareWrapper(logFactory, m, corsOptions, sf.ServiceGlobals{})
 
 		// Act
 		actual := sut.Wrap(subSystem, name, scenario, handle, metaFunc)
 
-		assert.NotNil(t, actual, "Scenario %n", i)
-		assert.NotEqual(t, handle, actual, "Scenario %n", i)
+		assert.NotNil(t, actual, "Scenario %x", i)
+		assert.NotEqual(t, &handle, &actual, "Scenario %x", i)
 
 		actual(w, r, p)
-		assert.True(t, handleCalled, "Scenario %n", i)
+		assert.True(t, handleCalled, "Scenario %x", i)
 	}
 }
 
@@ -90,7 +90,7 @@ func TestMiddlewareWrapperImpl_Wrap_UnknownMiddleware_ReturnsUnwrappedHandler(t 
 	}
 
 	logFactory.On("NewLogger", mock.Anything).Return(log)
-	log.On("Warn", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+	log.On("Warn", mock.Anything, mock.Anything, mock.Anything).Once()
 
 	sut := sf.NewMiddlewareWrapper(logFactory, m, corsOptions, sf.ServiceGlobals{})
 
@@ -125,7 +125,7 @@ func TestMiddlewareWrapperImpl_Wrap_PanicsAreHandled(t *testing.T) {
 		p := sf.RouterParams{}
 
 		logFactory.On("NewLogger", mock.Anything).Return(log)
-		log.On("Error", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+		log.On("Error", mock.Anything, mock.Anything, mock.Anything).Once()
 		w.On("WriteHeader", http.StatusInternalServerError).Once()
 		w.On("Header").Return(http.Header{}).Once()
 		w.On("Status").Return(http.StatusOK).Once()
@@ -135,12 +135,12 @@ func TestMiddlewareWrapperImpl_Wrap_PanicsAreHandled(t *testing.T) {
 		// Act
 		actual := sut.Wrap(subSystem, name, scenario, handle, metaFunc)
 
-		assert.NotNil(t, actual, "Scenario %n", i)
-		assert.NotEqual(t, handle, actual, "Scenario %n", i)
-		assert.False(t, metaCalled, "Scenario %n", i)
+		assert.NotNil(t, actual, "Scenario %x", i)
+		assert.NotEqual(t, &handle, &actual, "Scenario %x", i)
+		assert.False(t, metaCalled, "Scenario %x", i)
 
 		actual(w, r, p)
-		assert.True(t, metaCalled, "Scenario %n", i)
+		assert.True(t, metaCalled, "Scenario %x", i)
 		log.AssertExpectations(t)
 		w.AssertExpectations(t)
 	}
