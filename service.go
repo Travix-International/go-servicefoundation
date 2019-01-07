@@ -110,14 +110,19 @@ var DefaultMiddlewares = []Middleware{PanicTo500, NoCaching}
 func NewService(group, name string, allowedMethods []string, shutdownFunc ShutdownFunc, version BuildVersion,
 	meta map[string]string) Service {
 
-	opt := NewServiceOptions(group, name, allowedMethods, shutdownFunc, version, meta)
+	authFunc := func(WrappedResponseWriter, *http.Request, RouterParams) bool {
+		// By default, anyone is authorized
+		return true
+	}
+
+	opt := NewServiceOptions(group, name, allowedMethods, authFunc, shutdownFunc, version, meta)
 
 	return NewCustomService(opt)
 }
 
 // NewServiceOptions creates and returns ServiceOptions that use environment variables for default configuration.
-func NewServiceOptions(group, name string, allowedMethods []string, shutdownFunc ShutdownFunc, version BuildVersion,
-	meta map[string]string) ServiceOptions {
+func NewServiceOptions(group, name string, allowedMethods []string, authFunc AuthorizationFunc,
+	shutdownFunc ShutdownFunc, version BuildVersion, meta map[string]string) ServiceOptions {
 
 	appName := env.OrDefault(envAppName, name)
 	serverName := env.OrDefault(envServerName, name)
@@ -138,7 +143,7 @@ func NewServiceOptions(group, name string, allowedMethods []string, shutdownFunc
 	logger := logFactory.NewLogger(meta)
 	metrics := NewMetrics(name, logger)
 	versionBuilder := NewVersionBuilder(version)
-	middlewareWrapper := NewMiddlewareWrapper(logFactory, metrics, &corsOptions, globals)
+	middlewareWrapper := NewMiddlewareWrapper(logFactory, metrics, &corsOptions, authFunc, globals)
 	stateReader := NewServiceStateReader()
 	exitFunc := NewExitFunc(logger, shutdownFunc)
 	port := env.AsInt(envHTTPpPort, defaultHTTPPort)

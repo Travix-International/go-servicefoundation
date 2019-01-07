@@ -26,6 +26,8 @@ const (
 	RequestLogging Middleware = 6
 	// RequestMetrics is a middleware enumeration to measure the incoming request and response times.
 	RequestMetrics Middleware = 7
+	// Authorize is a middle enumeration to authorize the current user before continuing.
+	Authorize Middleware = 8
 )
 
 type (
@@ -36,6 +38,8 @@ type (
 	MiddlewareWrapper interface {
 		Wrap(subsystem, name string, middleware Middleware, handler Handle, metaFunc MetaFunc) Handle
 	}
+
+	AuthorizationFunc func(WrappedResponseWriter, *http.Request, RouterParams) bool
 )
 
 type middlewareWrapperImpl struct {
@@ -44,15 +48,19 @@ type middlewareWrapperImpl struct {
 	metrics     Metrics
 	globals     ServiceGlobals
 	corsOptions *cors.Options
+	authFunc    AuthorizationFunc
 }
 
 // NewMiddlewareWrapper instantiates a new MiddlewareWrapper implementation.
-func NewMiddlewareWrapper(logFactory LogFactory, metrics Metrics, corsOptions *CORSOptions, globals ServiceGlobals) MiddlewareWrapper {
+func NewMiddlewareWrapper(logFactory LogFactory, metrics Metrics, corsOptions *CORSOptions,
+	authFunc AuthorizationFunc, globals ServiceGlobals) MiddlewareWrapper {
+
 	m := &middlewareWrapperImpl{
 		log:        logFactory.NewLogger(make(map[string]string)),
 		logFactory: logFactory,
 		metrics:    metrics,
 		globals:    globals,
+		authFunc:   authFunc,
 	}
 	m.corsOptions = m.mergeCORSOptions(corsOptions)
 	return m
@@ -76,6 +84,8 @@ func (m *middlewareWrapperImpl) Wrap(subsystem, name string, middleware Middlewa
 		return m.wrapWithRequestLogging(subsystem, name, handler, metaFunc)
 	case RequestMetrics:
 		return m.wrapWithRequestMetrics(subsystem, name, handler)
+	case Authorize:
+		return m.wrapWithAuthorization(subsystem, name, handler)
 	default:
 		m.log.Warn("UnhandledMiddleware", "Unhandled middleware: %v", middleware)
 	}
@@ -219,6 +229,16 @@ func (m *middlewareWrapperImpl) wrapWithRequestMetrics(subsystem, name string, h
 
 		labels, values = m.getLabelsAndValues(subsystem, name, w, r)
 		m.metrics.CountLabels("", "http_responses_total", "Total responses.", labels, values)
+	}
+}
+
+func (m *middlewareWrapperImpl) wrapWithAuthorization(subsystem, name string, handler Handle) Handle {
+	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
+		if !m.authFunc(w, r, p) {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		handler(w, r, p)
 	}
 }
 

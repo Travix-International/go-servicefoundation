@@ -20,6 +20,7 @@ func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
 		sf.RequestLogging,
 		sf.RequestMetrics,
 		sf.PanicTo500,
+		sf.Authorize,
 	}
 	useTls := false
 
@@ -36,6 +37,9 @@ func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
 		}
 		metaFunc := func(*http.Request, sf.RouterParams) map[string]string {
 			return make(map[string]string)
+		}
+		authFunc := func(_ sf.WrappedResponseWriter, _ *http.Request, _ sf.RouterParams) bool {
+			return true
 		}
 		rdr := &mockReader{}
 		r, _ := http.NewRequest("GET", "https://www.sf.com/some/url", rdr)
@@ -63,7 +67,7 @@ func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
 		logFactory.On("NewLogger", mock.Anything).Return(log)
 		log.On("Info", mock.Anything, mock.Anything, mock.Anything)
 
-		sut := sf.NewMiddlewareWrapper(logFactory, m, corsOptions, sf.ServiceGlobals{})
+		sut := sf.NewMiddlewareWrapper(logFactory, m, corsOptions, authFunc, sf.ServiceGlobals{})
 
 		// Act
 		actual := sut.Wrap(subSystem, name, scenario, handle, metaFunc)
@@ -86,13 +90,16 @@ func TestMiddlewareWrapperImpl_Wrap_UnknownMiddleware_ReturnsUnwrappedHandler(t 
 	metaFunc := func(*http.Request, sf.RouterParams) map[string]string {
 		return make(map[string]string)
 	}
+	authFunc := func(_ sf.WrappedResponseWriter, _ *http.Request, _ sf.RouterParams) bool {
+		return true
+	}
 	handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {
 	}
 
 	logFactory.On("NewLogger", mock.Anything).Return(log)
 	log.On("Warn", mock.Anything, mock.Anything, mock.Anything).Once()
 
-	sut := sf.NewMiddlewareWrapper(logFactory, m, corsOptions, sf.ServiceGlobals{})
+	sut := sf.NewMiddlewareWrapper(logFactory, m, corsOptions, authFunc, sf.ServiceGlobals{})
 
 	// Act
 	actual := sut.Wrap(subSystem, name, 0, handle, metaFunc)
@@ -116,6 +123,9 @@ func TestMiddlewareWrapperImpl_Wrap_PanicsAreHandled(t *testing.T) {
 			metaCalled = true
 			return make(map[string]string)
 		}
+		authFunc := func(_ sf.WrappedResponseWriter, _ *http.Request, _ sf.RouterParams) bool {
+			return true
+		}
 		handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {
 			panic("whoa")
 		}
@@ -130,7 +140,7 @@ func TestMiddlewareWrapperImpl_Wrap_PanicsAreHandled(t *testing.T) {
 		w.On("Header").Return(http.Header{}).Once()
 		w.On("Status").Return(http.StatusOK).Once()
 
-		sut := sf.NewMiddlewareWrapper(logFactory, m, corsOptions, sf.ServiceGlobals{})
+		sut := sf.NewMiddlewareWrapper(logFactory, m, corsOptions, authFunc, sf.ServiceGlobals{})
 
 		// Act
 		actual := sut.Wrap(subSystem, name, scenario, handle, metaFunc)
@@ -144,4 +154,41 @@ func TestMiddlewareWrapperImpl_Wrap_PanicsAreHandled(t *testing.T) {
 		log.AssertExpectations(t)
 		w.AssertExpectations(t)
 	}
+}
+
+func TestMiddlewareWrapperImpl_UnAuthorized_HandlerIsNotCalled(t *testing.T) {
+	const subSystem = "my-sub"
+	const name = "my-name"
+	logFactory := &mockLogFactory{}
+	log := &mockLogger{}
+	m := &mockMetrics{}
+	corsOptions := &sf.CORSOptions{}
+	handleCalled := false
+	handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {
+		handleCalled = true
+	}
+	metaFunc := func(*http.Request, sf.RouterParams) map[string]string {
+		return make(map[string]string)
+	}
+	authFunc := func(_ sf.WrappedResponseWriter, _ *http.Request, _ sf.RouterParams) bool {
+		return false
+	}
+	rdr := &mockReader{}
+	r, _ := http.NewRequest("GET", "https://www.sf.com/some/url", rdr)
+	w := &mockResponseWriter{}
+	p := sf.RouterParams{}
+
+	w.On("WriteHeader", http.StatusUnauthorized)
+	logFactory.On("NewLogger", mock.Anything).Return(log)
+
+	sut := sf.NewMiddlewareWrapper(logFactory, m, corsOptions, authFunc, sf.ServiceGlobals{})
+
+	// Act
+	actual := sut.Wrap(subSystem, name, sf.Authorize, handle, metaFunc)
+
+	assert.NotNil(t, actual)
+	assert.NotEqual(t, &handle, &actual)
+
+	actual(w, r, p)
+	assert.False(t, handleCalled)
 }
