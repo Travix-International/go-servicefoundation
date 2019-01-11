@@ -120,6 +120,10 @@ func (m *mockLogger) GetLogger() *logger.Logger {
 	return i.Get(0).(*logger.Logger)
 }
 
+func (m *mockLogger) AddMeta(meta map[string]string) {
+	m.Called(meta)
+}
+
 /* sf.Metrics mock */
 
 type (
@@ -207,7 +211,7 @@ type mockMiddlewareWrapper struct {
 
 func (m *mockMiddlewareWrapper) Wrap(subsystem, name string, middleware sf.Middleware, handler sf.Handle, metaFunc sf.MetaFunc) sf.Handle {
 	a := m.Called(subsystem, name, middleware, handler, metaFunc)
-	return a.Get(0).(func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams))
+	return a.Get(0).(func(sf.WrappedResponseWriter, *http.Request, sf.HandlerUtils))
 }
 
 /* sf.RouterFactory mock */

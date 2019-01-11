@@ -16,13 +16,15 @@ func TestServiceHandlerFactoryImpl_CreateRootHandler(t *testing.T) {
 	exitFn := func(int) {}
 	w := &mockResponseWriter{}
 	ssr := &mockServiceStateReader{}
-	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn)
+	logFactory := &mockLogFactory{}
+	metrics := &mockMetrics{}
+	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn, logFactory, metrics)
 
 	w.On("WriteHeader", http.StatusOK).Once()
 
 	// Act
 	actual := sut.NewHandlers().RootHandler.NewRootHandler()
-	actual(w, nil, sf.RouterParams{})
+	actual(w, nil, sf.HandlerUtils{})
 
 	w.AssertExpectations(t)
 }
@@ -33,14 +35,16 @@ func TestServiceHandlerFactoryImpl_CreateReadinessHandler(t *testing.T) {
 	exitFn := func(int) {}
 	w := &mockResponseWriter{}
 	ssr := &mockServiceStateReader{}
-	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn)
+	logFactory := &mockLogFactory{}
+	metrics := &mockMetrics{}
+	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn, logFactory, metrics)
 
 	w.On("JSON", http.StatusOK, mock.Anything).Once()
 	ssr.On("IsReady").Return(true)
 
 	// Act
 	actual := sut.NewHandlers().ReadinessHandler.NewReadinessHandler()
-	actual(w, nil, sf.RouterParams{})
+	actual(w, nil, sf.HandlerUtils{})
 	w.AssertExpectations(t)
 }
 
@@ -50,14 +54,16 @@ func TestServiceHandlerFactoryImpl_CreateReadinessHandler_NotReady(t *testing.T)
 	exitFn := func(int) {}
 	w := &mockResponseWriter{}
 	ssr := &mockServiceStateReader{}
-	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn)
+	logFactory := &mockLogFactory{}
+	metrics := &mockMetrics{}
+	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn, logFactory, metrics)
 
 	w.On("JSON", http.StatusInternalServerError, mock.Anything).Once()
 	ssr.On("IsReady").Return(false)
 
 	// Act
 	actual := sut.NewHandlers().ReadinessHandler.NewReadinessHandler()
-	actual(w, nil, sf.RouterParams{})
+	actual(w, nil, sf.HandlerUtils{})
 
 	w.AssertExpectations(t)
 }
@@ -68,14 +74,16 @@ func TestServiceHandlerFactoryImpl_CreateLivenessHandler(t *testing.T) {
 	exitFn := func(int) {}
 	w := &mockResponseWriter{}
 	ssr := &mockServiceStateReader{}
-	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn)
+	logFactory := &mockLogFactory{}
+	metrics := &mockMetrics{}
+	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn, logFactory, metrics)
 
 	w.On("JSON", http.StatusOK, mock.Anything).Once()
 	ssr.On("IsLive").Return(true)
 
 	// Act
 	actual := sut.NewHandlers().LivenessHandler.NewLivenessHandler()
-	actual(w, nil, sf.RouterParams{})
+	actual(w, nil, sf.HandlerUtils{})
 
 	w.AssertExpectations(t)
 }
@@ -86,14 +94,16 @@ func TestServiceHandlerFactoryImpl_CreateLivenessHandler_NotLive(t *testing.T) {
 	exitFn := func(int) {}
 	w := &mockResponseWriter{}
 	ssr := &mockServiceStateReader{}
-	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn)
+	logFactory := &mockLogFactory{}
+	metrics := &mockMetrics{}
+	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn, logFactory, metrics)
 
 	w.On("JSON", http.StatusInternalServerError, mock.Anything).Once()
 	ssr.On("IsLive").Return(false)
 
 	// Act
 	actual := sut.NewHandlers().LivenessHandler.NewLivenessHandler()
-	actual(w, nil, sf.RouterParams{})
+	actual(w, nil, sf.HandlerUtils{})
 
 	w.AssertExpectations(t)
 }
@@ -104,14 +114,16 @@ func TestServiceHandlerFactoryImpl_CreateHealthHandler(t *testing.T) {
 	exitFn := func(int) {}
 	w := &mockResponseWriter{}
 	ssr := &mockServiceStateReader{}
-	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn)
+	logFactory := &mockLogFactory{}
+	metrics := &mockMetrics{}
+	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn, logFactory, metrics)
 
 	w.On("JSON", http.StatusOK, mock.Anything).Once()
 	ssr.On("IsHealthy").Return(true)
 
 	// Act
 	actual := sut.NewHandlers().HealthHandler.NewHealthHandler()
-	actual(w, nil, sf.RouterParams{})
+	actual(w, nil, sf.HandlerUtils{})
 
 	w.AssertExpectations(t)
 }
@@ -122,14 +134,16 @@ func TestServiceHandlerFactoryImpl_CreateHealthHandler_NotHealthy(t *testing.T) 
 	exitFn := func(int) {}
 	w := &mockResponseWriter{}
 	ssr := &mockServiceStateReader{}
-	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn)
+	logFactory := &mockLogFactory{}
+	metrics := &mockMetrics{}
+	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn, logFactory, metrics)
 
 	w.On("JSON", http.StatusInternalServerError, mock.Anything).Once()
 	ssr.On("IsHealthy").Return(false)
 
 	// Act
 	actual := sut.NewHandlers().HealthHandler.NewHealthHandler()
-	actual(w, nil, sf.RouterParams{})
+	actual(w, nil, sf.HandlerUtils{})
 
 	w.AssertExpectations(t)
 }
@@ -141,14 +155,16 @@ func TestServiceHandlerFactoryImpl_CreateVersionHandler(t *testing.T) {
 	w := &mockResponseWriter{}
 	version := make(map[string]string)
 	ssr := &mockServiceStateReader{}
-	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn)
+	logFactory := &mockLogFactory{}
+	metrics := &mockMetrics{}
+	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn, logFactory, metrics)
 
 	v.On("ToMap").Return(version).Once()
 	w.On("JSON", http.StatusOK, version).Once()
 
 	// Act
 	actual := sut.NewHandlers().VersionHandler.NewVersionHandler()
-	actual(w, nil, sf.RouterParams{})
+	actual(w, nil, sf.HandlerUtils{})
 
 	w.AssertExpectations(t)
 	v.AssertExpectations(t)
@@ -162,7 +178,9 @@ func TestServiceHandlerFactoryImpl_CreateMetricsHandler(t *testing.T) {
 	rdr := &mockReader{}
 	r, _ := http.NewRequest("GET", "https://www.sf.com/some/url", rdr)
 	ssr := &mockServiceStateReader{}
-	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn)
+	logFactory := &mockLogFactory{}
+	metrics := &mockMetrics{}
+	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn, logFactory, metrics)
 
 	w.On("WriteHeader", http.StatusOK).Once()
 	w.On("Header").Return(http.Header{}).Once()
@@ -172,7 +190,7 @@ func TestServiceHandlerFactoryImpl_CreateMetricsHandler(t *testing.T) {
 
 	// Act
 	actual := sut.NewHandlers().MetricsHandler.NewMetricsHandler()
-	actual(w, r, sf.RouterParams{})
+	actual(w, r, sf.HandlerUtils{})
 	w.AssertExpectations(t)
 }
 
@@ -185,14 +203,16 @@ func TestServiceHandlerFactoryImpl_CreateQuitHandler(t *testing.T) {
 	}
 	w := &mockResponseWriter{}
 	ssr := &mockServiceStateReader{}
-	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn)
+	logFactory := &mockLogFactory{}
+	metrics := &mockMetrics{}
+	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn, logFactory, metrics)
 
 	w.On("WriteHeader", http.StatusOK).Once()
 	w.On("Flush").Once()
 
 	// Act
 	actual := sut.NewHandlers().QuitHandler.NewQuitHandler()
-	actual(w, nil, sf.RouterParams{})
+	actual(w, nil, sf.HandlerUtils{})
 
 	w.AssertExpectations(t)
 	assert.True(t, called)
@@ -204,13 +224,15 @@ func TestServiceHandlerFactoryImpl_CreatePreFlightHandler(t *testing.T) {
 	exitFn := func(int) {}
 	w := &mockResponseWriter{}
 	ssr := &mockServiceStateReader{}
-	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn)
+	logFactory := &mockLogFactory{}
+	metrics := &mockMetrics{}
+	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn, logFactory, metrics)
 
 	w.On("WriteHeader", http.StatusOK).Once()
 
 	// Act
 	actual := sut.NewHandlers().PreFlightHandler.NewPreFlightHandler()
-	actual(w, nil, sf.RouterParams{})
+	actual(w, nil, sf.HandlerUtils{})
 
 	w.AssertExpectations(t)
 }
@@ -225,18 +247,22 @@ func TestServiceHandlerFactoryImpl_WrapHandler(t *testing.T) {
 	r, _ := http.NewRequest("GET", "https://www.sf.com/some/url", rdr)
 	w := &mockResponseWriter{}
 	handlerCalled := false
-	handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {
+	handle := func(sf.WrappedResponseWriter, *http.Request, sf.HandlerUtils) {
 		handlerCalled = true
 	}
 	metaFunc := func(*http.Request, sf.RouterParams) map[string]string {
 		return make(map[string]string)
 	}
 	ssr := &mockServiceStateReader{}
-	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn)
+	logFactory := &mockLogFactory{}
+	log := &mockLogger{}
+	metrics := &mockMetrics{}
+	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn, logFactory, metrics)
 
 	w.On("JSON", http.StatusOK, mock.Anything).Once()
 	m.On("Wrap", subSystem, name, sf.CORS, mock.Anything, mock.Anything).Return(handle).Once()
 	m.On("Wrap", subSystem, name, sf.NoCaching, mock.Anything, mock.Anything).Return(handle).Once()
+	logFactory.On("NewLogger", mock.Anything).Return(log)
 
 	// Act
 	actual := sut.Wrap(subSystem, name, []sf.Middleware{sf.CORS, sf.NoCaching}, handle, metaFunc)

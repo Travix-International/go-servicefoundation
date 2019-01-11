@@ -79,18 +79,22 @@ type (
 		exitFunc          ExitFunc
 		middlewareWrapper MiddlewareWrapper
 		stateReader       ServiceStateReader
+		logFactory        LogFactory
+		metrics           Metrics
 	}
 )
 
 // NewServiceHandlerFactory creates a new factory with handler implementations.
 func NewServiceHandlerFactory(middlewareWrapper MiddlewareWrapper, versionBuilder VersionBuilder,
-	stateReader ServiceStateReader, exitFunc ExitFunc) ServiceHandlerFactory {
+	stateReader ServiceStateReader, exitFunc ExitFunc, logFactory LogFactory, metrics Metrics) ServiceHandlerFactory {
 
 	return &serviceHandlerFactoryImpl{
 		versionBuilder:    versionBuilder,
 		exitFunc:          exitFunc,
 		middlewareWrapper: middlewareWrapper,
 		stateReader:       stateReader,
+		logFactory:        logFactory,
+		metrics:           metrics,
 	}
 }
 
@@ -106,7 +110,14 @@ func (f *serviceHandlerFactoryImpl) Wrap(subsystem, name string, middlewares []M
 		for i := 0; i < len(middlewares); i++ {
 			h = f.middlewareWrapper.Wrap(subsystem, name, middlewares[i], h, metaFunc)
 		}
-		h(NewWrappedResponseWriter(w), r, RouterParams{Params: p})
+		rp := RouterParams{Params: p}
+		u := HandlerUtils{
+			Meta:       metaFunc(r, rp),
+			Params:     rp,
+			LogFactory: f.logFactory,
+			Metrics:    f.metrics,
+		}
+		h(NewWrappedResponseWriter(w), r, u)
 	}
 }
 
@@ -125,13 +136,13 @@ func (f *serviceHandlerFactoryImpl) NewHandlers() *Handlers {
 }
 
 func (f *serviceHandlerFactoryImpl) NewRootHandler() Handle {
-	return func(w WrappedResponseWriter, _ *http.Request, _ RouterParams) {
+	return func(w WrappedResponseWriter, _ *http.Request, _ HandlerUtils) {
 		w.WriteHeader(http.StatusOK)
 	}
 }
 
 func (f *serviceHandlerFactoryImpl) NewReadinessHandler() Handle {
-	return func(w WrappedResponseWriter, _ *http.Request, _ RouterParams) {
+	return func(w WrappedResponseWriter, _ *http.Request, _ HandlerUtils) {
 		if f.stateReader.IsReady() {
 			w.JSON(http.StatusOK, "ok")
 		} else {
@@ -141,7 +152,7 @@ func (f *serviceHandlerFactoryImpl) NewReadinessHandler() Handle {
 }
 
 func (f *serviceHandlerFactoryImpl) NewLivenessHandler() Handle {
-	return func(w WrappedResponseWriter, _ *http.Request, _ RouterParams) {
+	return func(w WrappedResponseWriter, _ *http.Request, _ HandlerUtils) {
 		if f.stateReader.IsLive() {
 			w.JSON(http.StatusOK, "ok")
 		} else {
@@ -151,7 +162,7 @@ func (f *serviceHandlerFactoryImpl) NewLivenessHandler() Handle {
 }
 
 func (f *serviceHandlerFactoryImpl) NewQuitHandler() Handle {
-	return func(w WrappedResponseWriter, _ *http.Request, _ RouterParams) {
+	return func(w WrappedResponseWriter, _ *http.Request, _ HandlerUtils) {
 		defer f.exitFunc(0)
 
 		w.WriteHeader(http.StatusOK)
@@ -163,7 +174,7 @@ func (f *serviceHandlerFactoryImpl) NewQuitHandler() Handle {
 }
 
 func (f *serviceHandlerFactoryImpl) NewHealthHandler() Handle {
-	return func(w WrappedResponseWriter, _ *http.Request, _ RouterParams) {
+	return func(w WrappedResponseWriter, _ *http.Request, _ HandlerUtils) {
 		if f.stateReader.IsHealthy() {
 			w.JSON(http.StatusOK, "ok")
 		} else {
@@ -173,20 +184,20 @@ func (f *serviceHandlerFactoryImpl) NewHealthHandler() Handle {
 }
 
 func (f *serviceHandlerFactoryImpl) NewVersionHandler() Handle {
-	return func(w WrappedResponseWriter, _ *http.Request, _ RouterParams) {
+	return func(w WrappedResponseWriter, _ *http.Request, _ HandlerUtils) {
 		version := f.versionBuilder.ToMap()
 		w.JSON(http.StatusOK, version)
 	}
 }
 
 func (f *serviceHandlerFactoryImpl) NewMetricsHandler() Handle {
-	return func(w WrappedResponseWriter, r *http.Request, _ RouterParams) {
+	return func(w WrappedResponseWriter, r *http.Request, _ HandlerUtils) {
 		promhttp.Handler().ServeHTTP(w, r)
 	}
 }
 
 func (f *serviceHandlerFactoryImpl) NewPreFlightHandler() Handle {
-	return func(w WrappedResponseWriter, _ *http.Request, _ RouterParams) {
+	return func(w WrappedResponseWriter, _ *http.Request, _ HandlerUtils) {
 		w.WriteHeader(http.StatusOK)
 	}
 }

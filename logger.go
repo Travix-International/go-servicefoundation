@@ -22,11 +22,13 @@ type (
 		Info(event, formatOrMsg string, a ...interface{})
 		Warn(event, formatOrMsg string, a ...interface{})
 		Error(event, formatOrMsg string, a ...interface{})
+		AddMeta(meta map[string]string)
 		GetLogger() *logger.Logger
 	}
 
 	loggerImpl struct {
 		logMinLevel int
+		meta        map[string]string
 		logger      *logger.Logger
 	}
 
@@ -74,15 +76,20 @@ func NewLogFactory(logFilter string, baseMeta map[string]string) LogFactory {
 // NewLogger instantiates a new Logger implementation.
 func (f *logFactoryImpl) NewLogger(meta map[string]string) Logger {
 	logMeta := combineMetas(meta, f.baseMeta)
-	log, _ := logger.New(logMeta)
+
+	return &loggerImpl{
+		logger:      newLogger(logMeta),
+		meta:        logMeta,
+		logMinLevel: f.logLevel,
+	}
+}
+
+func newLogger(meta map[string]string) *logger.Logger {
+	log, _ := logger.New(meta)
 	formatter := NewLogFormatter()
 	consoleTransport := logger.NewTransport(os.Stdout, formatter)
 	log.AddTransport(consoleTransport)
-
-	return &loggerImpl{
-		logger:      log,
-		logMinLevel: f.logLevel,
-	}
+	return log
 }
 
 func combineMetas(meta1, meta2 map[string]string) map[string]string {
@@ -148,4 +155,9 @@ func (l *loggerImpl) Error(event, formatOrMsg string, a ...interface{}) {
 
 func (l *loggerImpl) GetLogger() *logger.Logger {
 	return l.logger
+}
+
+func (l *loggerImpl) AddMeta(meta map[string]string) {
+	newMeta := combineMetas(l.meta, meta)
+	l.logger = newLogger(newMeta)
 }

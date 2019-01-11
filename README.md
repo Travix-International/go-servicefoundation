@@ -22,6 +22,7 @@ ServiceFoundation enables you to create Web Services containing:
 * Standardized log messages in JSON format
 * Adding route-specific meta fields to log messages
 * Default handling of pre-flight requests
+* Optional authorization middleware
 
 To do:
 - [ ] De-duplicate CORS elements in slices
@@ -70,7 +71,7 @@ func main() {
 		func(r *http.Request, _ sf.RouterParams) map[string]string {
         		return make(map[string]string)
         },
-		func(w sf.WrappedResponseWriter, _ *http.Request, _ sf.RouterParams) {
+		func(w sf.WrappedResponseWriter, _ *http.Request, _ sf.HandlerUtils) {
 			w.JSON(http.StatusOK, "hello world!")
 		})
 
@@ -138,6 +139,11 @@ func (r *CustomServiceStateReader) IsHealthy() bool {
 }
 
 func main() {
+	authFn := func(_ sf.WrappedResponseWriter, _ *http.Request, u sf.HandlerUtils) bool {
+		// Implement your own authorization here
+		u.Logger.Info("Authorize", "Authorization requested")
+		return true 
+	}
 	shutdownFn := func(log sf.Logger) {
 		log.Info("GracefulShutdown", "Handling graceful shutdown")
 	}
@@ -157,6 +163,7 @@ func main() {
 	opt := sf.NewServiceOptions(
 		"AppGroup", "HelloWorldService",
 		[]string{http.MethodGet},
+		authFn,
 		shutdownFn,
 		sf.BuildVersion{
 			GitHash:       gitHash,
@@ -183,7 +190,8 @@ func main() {
             routeMeta["hello"] = "route"
 			return routeMeta 
         },
-		func(w sf.WrappedResponseWriter, _ *http.Request, _ sf.RouterParams) {
+		func(w sf.WrappedResponseWriter, _ *http.Request, u sf.HandlerUtils) {
+			u.Logger.Info("HelloWorld", "Endpoint called")
 			w.JSON(http.StatusOK, "hello world!")
 		})
 

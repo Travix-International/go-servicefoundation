@@ -110,7 +110,7 @@ var DefaultMiddlewares = []Middleware{PanicTo500, NoCaching}
 func NewService(group, name string, allowedMethods []string, shutdownFunc ShutdownFunc, version BuildVersion,
 	meta map[string]string) Service {
 
-	authFunc := func(WrappedResponseWriter, *http.Request, RouterParams) bool {
+	authFunc := func(WrappedResponseWriter, *http.Request, HandlerUtils) bool {
 		// By default, anyone is authorized
 		return true
 	}
@@ -143,7 +143,7 @@ func NewServiceOptions(group, name string, allowedMethods []string, authFunc Aut
 	logger := logFactory.NewLogger(meta)
 	metrics := NewMetrics(name, logger)
 	versionBuilder := NewVersionBuilder(version)
-	middlewareWrapper := NewMiddlewareWrapper(logFactory, metrics, &corsOptions, authFunc, globals)
+	middlewareWrapper := NewMiddlewareWrapper(logger, metrics, &corsOptions, authFunc, globals)
 	stateReader := NewServiceStateReader()
 	exitFunc := NewExitFunc(logger, shutdownFunc)
 	port := env.AsInt(envHTTPpPort, defaultHTTPPort)
@@ -254,7 +254,9 @@ func (s *serviceStateReaderImpl) IsHealthy() bool {
 
 // SetHandlers is used to update the handler references in ServiceOptions to use the correct middleware and state.
 func (o *ServiceOptions) SetHandlers() {
-	factory := NewServiceHandlerFactory(o.MiddlewareWrapper, o.VersionBuilder, o.ServiceStateReader, o.ExitFunc)
+	factory := NewServiceHandlerFactory(o.MiddlewareWrapper, o.VersionBuilder, o.ServiceStateReader, o.ExitFunc,
+		o.LogFactory, o.Metrics)
+
 	o.Handlers = factory.NewHandlers()
 	o.WrapHandler = factory
 }

@@ -82,3 +82,21 @@ func TestLoggerImpl_GetLogger_CombineMetas(t *testing.T) {
 
 	assert.NotNil(t, logger)
 }
+
+func TestLoggerImpl_AddMeta(t *testing.T) {
+	meta1 := make(map[string]string)
+	meta1["key1"] = "value1"
+	meta1["key2"] = "value2"
+	meta2 := make(map[string]string)
+	meta2["key3"] = "value3"
+	meta1["key2"] = "value2b"
+
+	factory := sf.NewLogFactory("Debug", make(map[string]string))
+	sut := factory.NewLogger(meta1)
+
+	// Act
+	sut.AddMeta(meta2)
+	logger := sut.GetLogger()
+
+	assert.NotNil(t, logger)
+}

@@ -59,8 +59,8 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 	metaFunc := func(*http.Request, sf.RouterParams) map[string]string {
 		return make(map[string]string)
 	}
-	var preFlightHandle sf.Handle = func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
-	handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
+	var preFlightHandle sf.Handle = func(sf.WrappedResponseWriter, *http.Request, sf.HandlerUtils) {}
+	handle := func(sf.WrappedResponseWriter, *http.Request, sf.HandlerUtils) {}
 	middlewares := sf.DefaultMiddlewares
 
 	logFactory.On("NewLogger", mock.Anything).Return(log)
@@ -124,8 +124,8 @@ func TestServiceImpl_AddRouteWithCORS(t *testing.T) {
 	metaFunc := func(*http.Request, sf.RouterParams) map[string]string {
 		return make(map[string]string)
 	}
-	var preFlightHandle sf.Handle = func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
-	handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
+	var preFlightHandle sf.Handle = func(sf.WrappedResponseWriter, *http.Request, sf.HandlerUtils) {}
+	handle := func(sf.WrappedResponseWriter, *http.Request, sf.HandlerUtils) {}
 	middlewares := append([]sf.Middleware{sf.CORS}, sf.DefaultMiddlewares...)
 	hasPreFlightCORS := false
 
@@ -197,7 +197,7 @@ func TestServiceImpl_AddRouteWithHandledPreFlight(t *testing.T) {
 	metaFunc := func(*http.Request, sf.RouterParams) map[string]string {
 		return make(map[string]string)
 	}
-	handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
+	handle := func(sf.WrappedResponseWriter, *http.Request, sf.HandlerUtils) {}
 	middlewares := sf.DefaultMiddlewares
 
 	logFactory.On("NewLogger", mock.Anything).Return(log)
@@ -238,7 +238,7 @@ func TestServiceImpl_Run(t *testing.T) {
 		Router: &httprouter.Router{},
 	}
 	var wrappedHandle httprouter.Handle = func(http.ResponseWriter, *http.Request, httprouter.Params) {}
-	var handle sf.Handle = func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
+	var handle sf.Handle = func(sf.WrappedResponseWriter, *http.Request, sf.HandlerUtils) {}
 
 	quitH := &mockQuitHandler{}
 	rootH := &mockRootHandler{}
@@ -346,7 +346,7 @@ func TestServiceImpl_Run_NoPublicRootHandler(t *testing.T) {
 		Router: &httprouter.Router{},
 	}
 	var wrappedHandle httprouter.Handle = func(http.ResponseWriter, *http.Request, httprouter.Params) {}
-	var handle sf.Handle = func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
+	var handle sf.Handle = func(sf.WrappedResponseWriter, *http.Request, sf.HandlerUtils) {}
 
 	quitH := &mockQuitHandler{}
 	rootH := &mockRootHandler{}

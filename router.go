@@ -8,10 +8,18 @@ import (
 
 type (
 	// Handle is a function signature for the ServiceFoundation handlers
-	Handle func(WrappedResponseWriter, *http.Request, RouterParams)
+	Handle func(WrappedResponseWriter, *http.Request, HandlerUtils)
 
 	// MetaFunc is a function that returns a map containing meta data used to enrich log messages.
 	MetaFunc func(*http.Request, RouterParams) map[string]string
+
+	// HandlerUtils contains utilities that can be used by the current handler.
+	HandlerUtils struct {
+		Meta       map[string]string
+		Params     RouterParams
+		LogFactory LogFactory
+		Metrics    Metrics
+	}
 
 	// RouterParams is a struct that wraps httprouter.Params
 	RouterParams struct {
@@ -48,4 +56,12 @@ func NewRouterFactory() RouterFactory {
 
 func (r *routerFactoryImpl) NewRouter() *Router {
 	return &Router{Router: httprouter.New()}
+}
+
+/* HandlerUtils methods */
+
+// NewLoggerWithMeta instantiates and returns a new logger containing the provided meta.
+func (u HandlerUtils) NewLoggerWithMeta(meta map[string]string) Logger {
+	combinedMeta := combineMetas(u.Meta, meta)
+	return u.LogFactory.NewLogger(combinedMeta)
 }

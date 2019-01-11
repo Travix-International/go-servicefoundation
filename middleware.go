@@ -39,12 +39,13 @@ type (
 		Wrap(subsystem, name string, middleware Middleware, handler Handle, metaFunc MetaFunc) Handle
 	}
 
-	AuthorizationFunc func(WrappedResponseWriter, *http.Request, RouterParams) bool
+	// AuthorizationFunc is a middleware function that should return true if authorization is successful.
+	AuthorizationFunc func(WrappedResponseWriter, *http.Request, HandlerUtils) bool
 )
 
 type middlewareWrapperImpl struct {
-	log         Logger
-	logFactory  LogFactory
+	log Logger
+	//logFactory  LogFactory
 	metrics     Metrics
 	globals     ServiceGlobals
 	corsOptions *cors.Options
@@ -52,15 +53,14 @@ type middlewareWrapperImpl struct {
 }
 
 // NewMiddlewareWrapper instantiates a new MiddlewareWrapper implementation.
-func NewMiddlewareWrapper(logFactory LogFactory, metrics Metrics, corsOptions *CORSOptions,
+func NewMiddlewareWrapper(logger Logger, metrics Metrics, corsOptions *CORSOptions,
 	authFunc AuthorizationFunc, globals ServiceGlobals) MiddlewareWrapper {
 
 	m := &middlewareWrapperImpl{
-		log:        logFactory.NewLogger(make(map[string]string)),
-		logFactory: logFactory,
-		metrics:    metrics,
-		globals:    globals,
-		authFunc:   authFunc,
+		log:      logger,
+		metrics:  metrics,
+		globals:  globals,
+		authFunc: authFunc,
 	}
 	m.corsOptions = m.mergeCORSOptions(corsOptions)
 	return m
@@ -93,48 +93,50 @@ func (m *middlewareWrapperImpl) Wrap(subsystem, name string, middleware Middlewa
 }
 
 func (m *middlewareWrapperImpl) wrapWithCounter(subsystem, name string, handler Handle) Handle {
-	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
+	return func(w WrappedResponseWriter, r *http.Request, u HandlerUtils) {
 		counterName := fmt.Sprintf("%v_total", strings.ToLower(name))
 		counterHelp := fmt.Sprintf("Totals for %v.", name)
 		labels, values := m.getLabelsAndValues(subsystem, name, w, r)
 
-		m.metrics.CountLabels("", counterName, counterHelp, labels, values)
+		u.Metrics.CountLabels("", counterName, counterHelp, labels, values)
 
-		handler(w, r, p)
+		handler(w, r, u)
 	}
 }
 
 func (m *middlewareWrapperImpl) wrapWithHistogram(subsystem, name string, handler Handle) Handle {
-	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
+	return func(w WrappedResponseWriter, r *http.Request, u HandlerUtils) {
 		histogramName := fmt.Sprintf("%v_duration_milliseconds", strings.ToLower(name))
 		histogramHelp := fmt.Sprintf("Response times for %v in milliseconds.", name)
 
 		labels, values := m.getLabelsAndValues(subsystem, name, w, r)
-		hist := m.metrics.AddHistogramVec(subsystem, histogramName, histogramHelp, labels, values)
+		hist := u.Metrics.AddHistogramVec(subsystem, histogramName, histogramHelp, labels, values)
 		start := time.Now()
 
-		handler(w, r, p)
+		handler(w, r, u)
 
 		hist.RecordTimeElapsed(start)
 	}
 }
 
 func (m *middlewareWrapperImpl) wrapWithRequestLogging(subsystem, name string, handler Handle, metaFunc MetaFunc) Handle {
-	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
-		meta := metaFunc(r, p)
-		log := m.getMetaLog(subsystem, name, nil, r, p, meta)
-		log.Info("ApiRequest", m.getRequestStartMessage(r, p, meta))
+	return func(w WrappedResponseWriter, r *http.Request, u HandlerUtils) {
+		meta := metaFunc(r, u.Params)
+		m.addRequestResponseToMeta(w, r, meta)
+		log := u.NewLoggerWithMeta(meta)
+		log.Info("ApiRequest", m.getRequestStartMessage(r, u.Params, meta))
 
 		start := time.Now()
 
-		handler(w, r, p)
+		handler(w, r, u)
 
 		elapsedMs := float64(time.Since(start).Nanoseconds()/int64(time.Microsecond)) / 1000.0
 		durationMs := strconv.FormatFloat(elapsedMs, 'f', 3, 64)
 
 		meta["entry.duration"] = durationMs
-		log = m.getMetaLog(subsystem, name, w, r, p, meta)
-		log.Info("ApiResponse", m.getRequestEndMessage(w, r, p, meta, durationMs))
+		m.addRequestResponseToMeta(w, r, meta)
+		log = u.NewLoggerWithMeta(meta)
+		log.Info("ApiResponse", m.getRequestEndMessage(w, r, u.Params, meta, durationMs))
 	}
 }
 
@@ -155,7 +157,7 @@ func (m *middlewareWrapperImpl) getRequestEndMessage(w WrappedResponseWriter, r 
 	)
 }
 
-func (m *middlewareWrapperImpl) getMetaLog(subsystem, name string, w WrappedResponseWriter, r *http.Request, p RouterParams, meta map[string]string) Logger {
+func (m *middlewareWrapperImpl) addRequestResponseToMeta(w WrappedResponseWriter, r *http.Request, meta map[string]string) {
 	m.addMetaEntry(meta, "http.method", r.Method)
 	m.addMetaEntry(meta, "http.host", r.Host)
 
@@ -184,8 +186,6 @@ func (m *middlewareWrapperImpl) getMetaLog(subsystem, name string, w WrappedResp
 			m.addMetaEntry(meta, "http.header."+strings.ToLower(key), w.Header().Get(key))
 		}
 	}
-
-	return m.logFactory.NewLogger(meta)
 }
 
 func (m *middlewareWrapperImpl) addMetaEntry(meta map[string]string, key, value string) {
@@ -211,7 +211,7 @@ func (m *middlewareWrapperImpl) getLabelsAndValues(subsystem, name string, w Wra
 }
 
 func (m *middlewareWrapperImpl) wrapWithRequestMetrics(subsystem, name string, handler Handle) Handle {
-	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
+	return func(w WrappedResponseWriter, r *http.Request, u HandlerUtils) {
 		labels, values := m.getLabelsAndValues(subsystem, name, w, r)
 		start := time.Now()
 
@@ -220,9 +220,9 @@ func (m *middlewareWrapperImpl) wrapWithRequestMetrics(subsystem, name string, h
 		sumMicroSeconds := m.metrics.AddSummaryVec("", "http_request_duration_microseconds",
 			"Response times for requests in microseconds.", labels, values)
 
-		m.metrics.CountLabels("", "http_requests_total", "Total requests.", labels, values)
+		u.Metrics.CountLabels("", "http_requests_total", "Total requests.", labels, values)
 
-		handler(w, r, p)
+		handler(w, r, u)
 
 		sumMicroSeconds.RecordDuration(start, time.Microsecond)
 		histSeconds.RecordDuration(start, time.Second)
@@ -233,32 +233,32 @@ func (m *middlewareWrapperImpl) wrapWithRequestMetrics(subsystem, name string, h
 }
 
 func (m *middlewareWrapperImpl) wrapWithAuthorization(subsystem, name string, handler Handle) Handle {
-	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
-		if !m.authFunc(w, r, p) {
+	return func(w WrappedResponseWriter, r *http.Request, u HandlerUtils) {
+		if !m.authFunc(w, r, u) {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
-		handler(w, r, p)
+		handler(w, r, u)
 	}
 }
 
 func (m *middlewareWrapperImpl) wrapWithNoCache(subsystem, name string, handler Handle) Handle {
-	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
+	return func(w WrappedResponseWriter, r *http.Request, u HandlerUtils) {
 		w.Header().Set("Cache-Control", "max-age: 0, private")
 		w.Header().Set("Last-Modified", time.Now().Format(http.TimeFormat))
 		w.Header().Set("Expires", time.Now().AddDate(-1, 0, 0).Format(http.TimeFormat))
 
-		handler(w, r, p)
+		handler(w, r, u)
 	}
 }
 
 func (m *middlewareWrapperImpl) wrapWithCORS(subsystem, name string, handler Handle) Handle {
-	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
+	return func(w WrappedResponseWriter, r *http.Request, u HandlerUtils) {
 		c := cors.New(*m.corsOptions)
 
 		h := func(ww http.ResponseWriter, r *http.Request) {
 			w := NewWrappedResponseWriter(ww)
-			handler(w, r, p)
+			handler(w, r, u)
 		}
 		c.ServeHTTP(w, r, h)
 	}
@@ -284,16 +284,16 @@ func (m *middlewareWrapperImpl) mergeCORSOptions(options *CORSOptions) *cors.Opt
 }
 
 func (m *middlewareWrapperImpl) wrapWithPanicHandler(subsystem, name string, handler Handle, metaFunc MetaFunc) Handle {
-	return func(w WrappedResponseWriter, r *http.Request, p RouterParams) {
+	return func(w WrappedResponseWriter, r *http.Request, u HandlerUtils) {
 		defer func() {
 			if rec := recover(); rec != nil {
-				meta := metaFunc(r, p)
-				log := m.getMetaLog(subsystem, name, w, r, p, meta)
+				meta := metaFunc(r, u.Params)
+				log := u.NewLoggerWithMeta(meta)
 				log.Error("PanicAutorecover", "PANIC recovered: %v\n%s", rec, string(debug.Stack()))
 				w.WriteHeader(http.StatusInternalServerError)
 			}
 		}()
 
-		handler(w, r, p)
+		handler(w, r, u)
 	}
 }
