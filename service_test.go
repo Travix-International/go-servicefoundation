@@ -50,9 +50,7 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 	handlers := sf.Handlers{
 		PreFlightHandler: preFlightH,
 	}
-	router := sf.Router{
-		Router: &httprouter.Router{},
-	}
+	router := httprouter.Router{}
 	opt := sf.ServiceOptions{
 		Globals: sf.ServiceGlobals{
 			AppName: "test-service",
@@ -115,9 +113,7 @@ func TestServiceImpl_AddRouteWithCORS(t *testing.T) {
 	handlers := sf.Handlers{
 		PreFlightHandler: preFlightH,
 	}
-	router := sf.Router{
-		Router: &httprouter.Router{},
-	}
+	router := httprouter.Router{}
 	opt := sf.ServiceOptions{
 		Globals: sf.ServiceGlobals{
 			AppName: "test-service",
@@ -188,9 +184,7 @@ func TestServiceImpl_AddRouteWithHandledPreFlight(t *testing.T) {
 	handlers := sf.Handlers{
 		PreFlightHandler: preFlightH,
 	}
-	router := sf.Router{
-		Router: &httprouter.Router{},
-	}
+	router := httprouter.Router{}
 	opt := sf.ServiceOptions{
 		Globals: sf.ServiceGlobals{
 			AppName: "test-service",
@@ -243,15 +237,10 @@ func TestServiceImpl_Run(t *testing.T) {
 	rf := &mockRouterFactory{}
 	shf := &mockServiceHandlerFactory{}
 
-	publicRouter := sf.Router{
-		Router: &httprouter.Router{},
-	}
-	readinessRouter := sf.Router{
-		Router: &httprouter.Router{},
-	}
-	internalRouter := sf.Router{
-		Router: &httprouter.Router{},
-	}
+	publicRouter := httprouter.Router{}
+	readinessRouter := httprouter.Router{}
+	internalRouter := httprouter.Router{}
+
 	var wrappedHandle httprouter.Handle = func(http.ResponseWriter, *http.Request, httprouter.Params) {}
 	var handle sf.Handle = func(sf.WrappedResponseWriter, *http.Request, sf.HandlerUtils) {}
 
@@ -353,15 +342,10 @@ func TestServiceImpl_Run_NoPublicRootHandler(t *testing.T) {
 	rf := &mockRouterFactory{}
 	shf := &mockServiceHandlerFactory{}
 
-	publicRouter := &sf.Router{
-		Router: &httprouter.Router{},
-	}
-	readinessRouter := &sf.Router{
-		Router: &httprouter.Router{},
-	}
-	internalRouter := &sf.Router{
-		Router: &httprouter.Router{},
-	}
+	publicRouter := httprouter.Router{}
+	readinessRouter := httprouter.Router{}
+	internalRouter := httprouter.Router{}
+
 	var wrappedHandle httprouter.Handle = func(http.ResponseWriter, *http.Request, httprouter.Params) {}
 	var handle sf.Handle = func(sf.WrappedResponseWriter, *http.Request, sf.HandlerUtils) {}
 
@@ -401,15 +385,15 @@ func TestServiceImpl_Run_NoPublicRootHandler(t *testing.T) {
 		Return(wrappedHandle)
 	rf.
 		On("NewRouter").
-		Return(readinessRouter).
+		Return(&readinessRouter).
 		Once()
 	rf.
 		On("NewRouter").
-		Return(internalRouter).
+		Return(&internalRouter).
 		Once()
 	rf.
 		On("NewRouter").
-		Return(publicRouter).
+		Return(&publicRouter).
 		Once()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
@@ -454,19 +438,6 @@ func TestServiceImpl_Run_NoPublicRootHandler(t *testing.T) {
 	quitH.AssertExpectations(t)
 	versionH.AssertExpectations(t)
 }
-
-//func TestNewExitFunc(t *testing.T) {
-//	log := &mockLogger{}
-//	shutdownFn := func(log sf.Logger) {}
-//
-//	log.On("Debug", mock.Anything, mock.Anything, mock.Anything)
-//
-//	// Act
-//	sut := sf.NewExitFunc(log, shutdownFn)
-//
-//	assert.NotNil(t, sut)
-//	go sut(1)
-//}
 
 func TestNewServiceStateReader(t *testing.T) {
 	// Act

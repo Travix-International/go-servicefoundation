@@ -26,14 +26,15 @@ type (
 		Params httprouter.Params
 	}
 
-	// Router is a struct that wraps httprouter.Router
-	Router struct {
-		Router *httprouter.Router
+	// Router is an interface containing the used methods from httprouter.Router
+	Router interface {
+		Handle(method, path string, handle httprouter.Handle)
+		ServeHTTP(http.ResponseWriter, *http.Request)
 	}
 
 	// RouterFactory is an interface to create a new Router.
 	RouterFactory interface {
-		NewRouter() *Router
+		NewRouter() Router
 	}
 
 	routerFactoryImpl struct {
@@ -54,8 +55,8 @@ func NewRouterFactory() RouterFactory {
 
 /* RouterFactory implementation */
 
-func (r *routerFactoryImpl) NewRouter() *Router {
-	return &Router{Router: httprouter.New()}
+func (r *routerFactoryImpl) NewRouter() Router {
+	return httprouter.New()
 }
 
 /* HandlerUtils methods */
