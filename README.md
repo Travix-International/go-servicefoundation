@@ -48,20 +48,12 @@ import (
 	sf "github.com/Travix-International/go-servicefoundation"
 )
 
+// Set these variables at runtime using -ldflags
 var gitHash, versionNumber, buildDate string
 
 func main() {
-	svc := sf.NewService(
-		"AppGroup","HelloWorldService",
-		[]string{http.MethodGet},
-		func(log sf.Logger) {
-			log.Info("GracefulShutdown", "Handling graceful shutdown")
-		},
-		sf.BuildVersion{
-			GitHash:       gitHash,
-			VersionNumber: versionNumber,
-			BuildDate:     buildDate,
-		}, make(map[string]string))
+	opt := sf.NewDefaultServiceOptions("AppGroup","HelloWorldService")
+	svc := sf.NewService(opt)
 
 	svc.AddRoute(
 		"helloworld",
@@ -71,8 +63,8 @@ func main() {
 		func(r *http.Request, _ sf.RouterParams) map[string]string {
         		return make(map[string]string)
         },
-		func(w sf.WrappedResponseWriter, _ *http.Request, _ sf.HandlerUtils) {
-			w.JSON(http.StatusOK, "hello world!")
+		func(w sf.WrappedResponseWriter, r *http.Request, _ sf.HandlerUtils) {
+			w.WriteResponse(r, http.StatusOK, "hello world!")
 		})
 
 	svc.Run(context.Background()) // blocks execution
@@ -139,15 +131,6 @@ func (r *CustomServiceStateReader) IsHealthy() bool {
 }
 
 func main() {
-	authFn := func(_ sf.WrappedResponseWriter, _ *http.Request, u sf.HandlerUtils) bool {
-		// Implement your own authorization here
-		u.Logger.Info("Authorize", "Authorization requested")
-		return true 
-	}
-	shutdownFn := func(log sf.Logger) {
-		log.Info("GracefulShutdown", "Handling graceful shutdown")
-	}
-
 	stateReader := &CustomServiceStateReader{}
 
 	go func() {
@@ -162,22 +145,30 @@ func main() {
 
 	opt := sf.NewServiceOptions(
 		"AppGroup", "HelloWorldService",
-		[]string{http.MethodGet},
-		authFn,
-		shutdownFn,
+		sf.MethodsForGet,
 		sf.BuildVersion{
 			GitHash:       gitHash,
 			VersionNumber: versionNumber,
 			BuildDate:     buildDate,
 		}, globalMeta)
 	opt.ServiceStateReader = stateReader
-	opt.SetHandlers() // Required to re-bind the state to the ReadinessHandler
+	
+	opt.AuthFunc = func(_ sf.WrappedResponseWriter, _ *http.Request, u sf.HandlerUtils) bool {
+        // Implement your own authorization here
+        log := u.LogFactory.NewLogger(make(map[string]string))
+        log.Info("Authorize", "Authorization requested")
+        return true 
+    }
+	
+	opt.ExitFunc = func(log sf.Logger) {
+        log.Info("GracefulShutdown", "Handling graceful shutdown")
+    }
 
 	// Use this in case you want to handle the public root endpoint yourself instead of relying 
 	// on the default catch-all handling.
 	opt.UsePublicRootHandler = true
 
-	svc := sf.NewCustomService(opt)
+	svc := sf.NewService(opt)
 
 	svc.AddRoute(
 		"helloworld",
@@ -190,9 +181,10 @@ func main() {
             routeMeta["hello"] = "route"
 			return routeMeta 
         },
-		func(w sf.WrappedResponseWriter, _ *http.Request, u sf.HandlerUtils) {
-			u.Logger.Info("HelloWorld", "Endpoint called")
-			w.JSON(http.StatusOK, "hello world!")
+		func(w sf.WrappedResponseWriter, r *http.Request, u sf.HandlerUtils) {
+            log := u.LogFactory.NewLogger(make(map[string]string))
+			log.Info("HelloWorld", "Endpoint called")
+			w.WriteResponse(r, http.StatusOK, "hello world!")
 		})
 
 	svc.Run(context.Background()) // blocks execution

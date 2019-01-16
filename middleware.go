@@ -34,6 +34,11 @@ type (
 	// Middleware is an enumeration to indicate the available middleware wrappers.
 	Middleware int
 
+	//MiddlewareWrapperFactory is a factory for MiddlewareWrapper.
+	MiddlewareWrapperFactory interface {
+		NewMiddlewareWrapper(corsOptions *CORSOptions, authFunc AuthorizationFunc) MiddlewareWrapper
+	}
+
 	// MiddlewareWrapper is an interface to wrap an existing handler with the specified middleware.
 	MiddlewareWrapper interface {
 		Wrap(subsystem, name string, middleware Middleware, handler Handle, metaFunc MetaFunc) Handle
@@ -41,25 +46,35 @@ type (
 
 	// AuthorizationFunc is a middleware function that should return true if authorization is successful.
 	AuthorizationFunc func(WrappedResponseWriter, *http.Request, HandlerUtils) bool
+
+	middlewareWrapperFactoryImpl struct {
+		log     Logger
+		globals ServiceGlobals
+	}
+
+	middlewareWrapperImpl struct {
+		log         Logger
+		globals     ServiceGlobals
+		corsOptions *cors.Options
+		authFunc    AuthorizationFunc
+	}
 )
 
-type middlewareWrapperImpl struct {
-	log Logger
-	//logFactory  LogFactory
-	metrics     Metrics
-	globals     ServiceGlobals
-	corsOptions *cors.Options
-	authFunc    AuthorizationFunc
+// NewMiddlewareWrapperFactory instantiates and returns a new NewMiddlewareWrapperFactory implementation.
+func NewMiddlewareWrapperFactory(logger Logger, globals ServiceGlobals) MiddlewareWrapperFactory {
+	return &middlewareWrapperFactoryImpl{
+		log:     logger,
+		globals: globals,
+	}
 }
 
 // NewMiddlewareWrapper instantiates a new MiddlewareWrapper implementation.
-func NewMiddlewareWrapper(logger Logger, metrics Metrics, corsOptions *CORSOptions,
-	authFunc AuthorizationFunc, globals ServiceGlobals) MiddlewareWrapper {
+func (f *middlewareWrapperFactoryImpl) NewMiddlewareWrapper(corsOptions *CORSOptions,
+	authFunc AuthorizationFunc) MiddlewareWrapper {
 
 	m := &middlewareWrapperImpl{
-		log:      logger,
-		metrics:  metrics,
-		globals:  globals,
+		log:      f.log,
+		globals:  f.globals,
 		authFunc: authFunc,
 	}
 	m.corsOptions = m.mergeCORSOptions(corsOptions)
@@ -215,9 +230,9 @@ func (m *middlewareWrapperImpl) wrapWithRequestMetrics(subsystem, name string, h
 		labels, values := m.getLabelsAndValues(subsystem, name, w, r)
 		start := time.Now()
 
-		histSeconds := m.metrics.AddHistogramVec("", "http_request_duration_seconds",
+		histSeconds := u.Metrics.AddHistogramVec("", "http_request_duration_seconds",
 			"Response times for requests in seconds.", labels, values)
-		sumMicroSeconds := m.metrics.AddSummaryVec("", "http_request_duration_microseconds",
+		sumMicroSeconds := u.Metrics.AddSummaryVec("", "http_request_duration_microseconds",
 			"Response times for requests in microseconds.", labels, values)
 
 		u.Metrics.CountLabels("", "http_requests_total", "Total requests.", labels, values)
@@ -228,7 +243,7 @@ func (m *middlewareWrapperImpl) wrapWithRequestMetrics(subsystem, name string, h
 		histSeconds.RecordDuration(start, time.Second)
 
 		labels, values = m.getLabelsAndValues(subsystem, name, w, r)
-		m.metrics.CountLabels("", "http_responses_total", "Total responses.", labels, values)
+		u.Metrics.CountLabels("", "http_responses_total", "Total responses.", labels, values)
 	}
 }
 

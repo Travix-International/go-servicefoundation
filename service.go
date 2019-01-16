@@ -42,23 +42,26 @@ type (
 	// ServiceOptions contains value and references used by the Service implementation. The contents of ServiceOptions
 	// can be used to customize or extend ServiceFoundation.
 	ServiceOptions struct {
-		Globals              ServiceGlobals
-		Port                 int
-		ReadinessPort        int
-		InternalPort         int
-		LogFactory           LogFactory
-		Metrics              Metrics
-		RouterFactory        RouterFactory
-		MiddlewareWrapper    MiddlewareWrapper
-		Handlers             *Handlers
-		WrapHandler          WrapHandler
-		VersionBuilder       VersionBuilder
-		ServiceStateReader   ServiceStateReader
-		ShutdownFunc         ShutdownFunc
-		ExitFunc             ExitFunc
-		ServerTimeout        time.Duration
-		IdleTimeout          time.Duration
-		UsePublicRootHandler bool
+		Globals                  ServiceGlobals
+		Port                     int
+		ReadinessPort            int
+		InternalPort             int
+		LogFactory               LogFactory
+		Metrics                  Metrics
+		RouterFactory            RouterFactory
+		MiddlewareWrapperFactory MiddlewareWrapperFactory
+		CORSOptions              CORSOptions
+		Handlers                 Handlers
+		WrapHandler              WrapHandler
+		VersionBuilder           VersionBuilder
+		ServiceStateReader       ServiceStateReader
+		ShutdownFunc             ShutdownFunc
+		AuthFunc                 AuthorizationFunc
+		ExitFunc                 func(Logger)
+		ServerTimeout            time.Duration
+		IdleTimeout              time.Duration
+		UsePublicRootHandler     bool
+		systemLogger             Logger
 	}
 
 	// ServiceStateReader contains state methods used by the service's handler implementations.
@@ -90,7 +93,7 @@ type (
 		publicRouter         *Router
 		readinessRouter      *Router
 		internalRouter       *Router
-		handlers             *Handlers
+		handlers             Handlers
 		wrapHandler          WrapHandler
 		versionBuilder       VersionBuilder
 		stateReader          ServiceStateReader
@@ -106,23 +109,17 @@ type (
 // DefaultMiddlewares contains the default middleware wrappers for the predefined service endpoints.
 var DefaultMiddlewares = []Middleware{PanicTo500, NoCaching}
 
-// NewService creates and returns a Service that uses environment variables for default configuration.
-func NewService(group, name string, allowedMethods []string, shutdownFunc ShutdownFunc, version BuildVersion,
-	meta map[string]string) Service {
-
-	authFunc := func(WrappedResponseWriter, *http.Request, HandlerUtils) bool {
-		// By default, anyone is authorized
-		return true
-	}
-
-	opt := NewServiceOptions(group, name, allowedMethods, authFunc, shutdownFunc, version, meta)
-
-	return NewCustomService(opt)
+// NewDefaultServiceOptions creates and returns ServiceOptions using a default configuration.
+func NewDefaultServiceOptions(group, name string) ServiceOptions {
+	return NewServiceOptions(group, name,
+		[]string{http.MethodGet, http.MethodPost, http.MethodOptions},
+		BuildVersion{},
+		make(map[string]string))
 }
 
 // NewServiceOptions creates and returns ServiceOptions that use environment variables for default configuration.
-func NewServiceOptions(group, name string, allowedMethods []string, authFunc AuthorizationFunc,
-	shutdownFunc ShutdownFunc, version BuildVersion, meta map[string]string) ServiceOptions {
+func NewServiceOptions(group, name string, allowedMethods []string,
+	version BuildVersion, meta map[string]string) ServiceOptions {
 
 	appName := env.OrDefault(envAppName, name)
 	serverName := env.OrDefault(envServerName, name)
@@ -143,29 +140,65 @@ func NewServiceOptions(group, name string, allowedMethods []string, authFunc Aut
 	logger := logFactory.NewLogger(meta)
 	metrics := NewMetrics(name, logger)
 	versionBuilder := NewVersionBuilder(version)
-	middlewareWrapper := NewMiddlewareWrapper(logger, metrics, &corsOptions, authFunc, globals)
+	middlewareWrapperFactory := NewMiddlewareWrapperFactory(logger, globals)
 	stateReader := NewServiceStateReader()
-	exitFunc := NewExitFunc(logger, shutdownFunc)
 	port := env.AsInt(envHTTPpPort, defaultHTTPPort)
 
 	opt := ServiceOptions{
-		Globals:              globals,
-		ServerTimeout:        time.Second * 30,
-		IdleTimeout:          time.Second * 30,
-		Port:                 port,
-		ReadinessPort:        port + 1,
-		InternalPort:         port + 2,
-		MiddlewareWrapper:    middlewareWrapper,
-		RouterFactory:        NewRouterFactory(),
-		LogFactory:           logFactory,
-		Metrics:              metrics,
-		VersionBuilder:       versionBuilder,
-		ServiceStateReader:   stateReader,
-		ExitFunc:             exitFunc,
+		Globals:                  globals,
+		ServerTimeout:            time.Second * 30,
+		IdleTimeout:              time.Second * 30,
+		Port:                     port,
+		ReadinessPort:            port + 1,
+		InternalPort:             port + 2,
+		MiddlewareWrapperFactory: middlewareWrapperFactory,
+		CORSOptions:              corsOptions,
+		RouterFactory:            NewRouterFactory(),
+		LogFactory:               logFactory,
+		Metrics:                  metrics,
+		VersionBuilder:           versionBuilder,
+		ServiceStateReader:       stateReader,
+		AuthFunc: func(WrappedResponseWriter, *http.Request, HandlerUtils) bool {
+			// By default, anyone is authorized
+			return true
+		},
+		ExitFunc:             func(_ Logger) {},
 		UsePublicRootHandler: true,
+		systemLogger:         logger,
 	}
-	opt.SetHandlers()
+	opt.setHandlers()
 	return opt
+}
+
+// NewService creates and returns a Service using the provided service options.
+func NewService(options ServiceOptions) Service {
+	if options.systemLogger == nil {
+		serviceMeta := createServiceMeta(make(map[string]string), options.Globals)
+		options.systemLogger = options.LogFactory.NewLogger(serviceMeta)
+	}
+
+	return &serviceImpl{
+		globals:              options.Globals,
+		serverTimeout:        options.ServerTimeout,
+		idleTimeout:          options.IdleTimeout,
+		port:                 options.Port,
+		readinessPort:        options.ReadinessPort,
+		internalPort:         options.InternalPort,
+		logFactory:           options.LogFactory,
+		log:                  options.systemLogger,
+		metrics:              options.Metrics,
+		publicRouter:         options.RouterFactory.NewRouter(),
+		readinessRouter:      options.RouterFactory.NewRouter(),
+		internalRouter:       options.RouterFactory.NewRouter(),
+		handlers:             options.Handlers,
+		wrapHandler:          options.WrapHandler,
+		versionBuilder:       options.VersionBuilder,
+		stateReader:          options.ServiceStateReader,
+		exitFunc:             newExitFunc(options.systemLogger, options.ExitFunc),
+		sendChan:             make(chan bool, 1),
+		receiveChan:          make(chan bool, 1),
+		usePublicRootHandler: options.UsePublicRootHandler,
+	}
 }
 
 func createServiceMeta(baseMeta map[string]string, globals ServiceGlobals) map[string]string {
@@ -179,35 +212,9 @@ func createServiceMeta(baseMeta map[string]string, globals ServiceGlobals) map[s
 	return combineMetas(baseMeta, serviceMeta)
 }
 
-// NewCustomService allows you to customize ServiceFoundation using your own implementations of factories.
-func NewCustomService(options ServiceOptions) Service {
-	return &serviceImpl{
-		globals:              options.Globals,
-		serverTimeout:        options.ServerTimeout,
-		idleTimeout:          options.IdleTimeout,
-		port:                 options.Port,
-		readinessPort:        options.ReadinessPort,
-		internalPort:         options.InternalPort,
-		logFactory:           options.LogFactory,
-		log:                  options.LogFactory.NewLogger(make(map[string]string)),
-		metrics:              options.Metrics,
-		publicRouter:         options.RouterFactory.NewRouter(),
-		readinessRouter:      options.RouterFactory.NewRouter(),
-		internalRouter:       options.RouterFactory.NewRouter(),
-		handlers:             options.Handlers,
-		wrapHandler:          options.WrapHandler,
-		versionBuilder:       options.VersionBuilder,
-		stateReader:          options.ServiceStateReader,
-		exitFunc:             options.ExitFunc,
-		sendChan:             make(chan bool, 1),
-		receiveChan:          make(chan bool, 1),
-		usePublicRootHandler: options.UsePublicRootHandler,
-	}
-}
-
-// NewExitFunc returns a new exit function. It wraps the shutdownFunc and executed an os.exit after the shutdown is
+// newExitFunc returns a new exit function. It wraps the shutdownFunc and executed an os.exit after the shutdown is
 // completed with a slight delay, giving the quit handler a chance to return a status.
-func NewExitFunc(log Logger, shutdownFunc ShutdownFunc) func(int) {
+func newExitFunc(log Logger, shutdownFunc ShutdownFunc) func(int) {
 	return func(code int) {
 		log.Debug("ServiceExit", "Performing service exit")
 
@@ -252,9 +259,12 @@ func (s *serviceStateReaderImpl) IsHealthy() bool {
 
 /* ServiceOptions implementation */
 
-// SetHandlers is used to update the handler references in ServiceOptions to use the correct middleware and state.
-func (o *ServiceOptions) SetHandlers() {
-	factory := NewServiceHandlerFactory(o.MiddlewareWrapper, o.VersionBuilder, o.ServiceStateReader, o.ExitFunc,
+// setHandlers is used to update the handler references in ServiceOptions to use the correct middleware and state.
+func (o *ServiceOptions) setHandlers() {
+	middlewareWrapper := o.MiddlewareWrapperFactory.NewMiddlewareWrapper(&o.CORSOptions, o.AuthFunc)
+	wrappedExitFunc := newExitFunc(o.systemLogger, o.ExitFunc)
+
+	factory := NewServiceHandlerFactory(middlewareWrapper, o.VersionBuilder, o.ServiceStateReader, wrappedExitFunc,
 		o.LogFactory, o.Metrics)
 
 	o.Handlers = factory.NewHandlers()

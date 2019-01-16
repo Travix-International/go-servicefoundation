@@ -68,7 +68,8 @@ func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
 		log.On("Info", mock.Anything, mock.Anything, mock.Anything)
 		log.On("AddMeta", mock.Anything)
 
-		sut := sf.NewMiddlewareWrapper(log, m, corsOptions, authFunc, sf.ServiceGlobals{})
+		factory := sf.NewMiddlewareWrapperFactory(log, sf.ServiceGlobals{})
+		sut := factory.NewMiddlewareWrapper(corsOptions, authFunc)
 
 		// Act
 		actual := sut.Wrap(subSystem, name, scenario, handle, metaFunc)
@@ -86,7 +87,6 @@ func TestMiddlewareWrapperImpl_Wrap_UnknownMiddleware_ReturnsUnwrappedHandler(t 
 	const name = "my-name"
 	logFactory := &mockLogFactory{}
 	log := &mockLogger{}
-	m := &mockMetrics{}
 	corsOptions := &sf.CORSOptions{}
 	metaFunc := func(*http.Request, sf.RouterParams) map[string]string {
 		return make(map[string]string)
@@ -100,7 +100,8 @@ func TestMiddlewareWrapperImpl_Wrap_UnknownMiddleware_ReturnsUnwrappedHandler(t 
 	logFactory.On("NewLogger", mock.Anything).Return(log)
 	log.On("Warn", mock.Anything, mock.Anything, mock.Anything).Once()
 
-	sut := sf.NewMiddlewareWrapper(log, m, corsOptions, authFunc, sf.ServiceGlobals{})
+	factory := sf.NewMiddlewareWrapperFactory(log, sf.ServiceGlobals{})
+	sut := factory.NewMiddlewareWrapper(corsOptions, authFunc)
 
 	// Act
 	actual := sut.Wrap(subSystem, name, 0, handle, metaFunc)
@@ -139,7 +140,8 @@ func TestMiddlewareWrapperImpl_Wrap_PanicsAreHandled(t *testing.T) {
 		log.On("Error", mock.Anything, mock.Anything, mock.Anything).Once()
 		w.On("WriteHeader", http.StatusInternalServerError).Once()
 
-		sut := sf.NewMiddlewareWrapper(log, m, corsOptions, authFunc, sf.ServiceGlobals{})
+		factory := sf.NewMiddlewareWrapperFactory(log, sf.ServiceGlobals{})
+		sut := factory.NewMiddlewareWrapper(corsOptions, authFunc)
 
 		// Act
 		actual := sut.Wrap(subSystem, name, scenario, handle, metaFunc)
@@ -160,7 +162,6 @@ func TestMiddlewareWrapperImpl_UnAuthorized_HandlerIsNotCalled(t *testing.T) {
 	const name = "my-name"
 	logFactory := &mockLogFactory{}
 	log := &mockLogger{}
-	m := &mockMetrics{}
 	corsOptions := &sf.CORSOptions{}
 	handleCalled := false
 	handle := func(sf.WrappedResponseWriter, *http.Request, sf.HandlerUtils) {
@@ -180,7 +181,8 @@ func TestMiddlewareWrapperImpl_UnAuthorized_HandlerIsNotCalled(t *testing.T) {
 	w.On("WriteHeader", http.StatusUnauthorized)
 	logFactory.On("NewLogger", mock.Anything).Return(log)
 
-	sut := sf.NewMiddlewareWrapper(log, m, corsOptions, authFunc, sf.ServiceGlobals{})
+	factory := sf.NewMiddlewareWrapperFactory(log, sf.ServiceGlobals{})
+	sut := factory.NewMiddlewareWrapper(corsOptions, authFunc)
 
 	// Act
 	actual := sut.Wrap(subSystem, name, sf.Authorize, handle, metaFunc)

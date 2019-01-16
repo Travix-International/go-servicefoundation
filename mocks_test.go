@@ -202,6 +202,18 @@ func (m *mockVersionBuilder) ToMap() map[string]string {
 	return a.Get(0).(map[string]string)
 }
 
+/* sf.MiddlewareWrapperFactory mock */
+
+type mockMiddlewareWrapperFactory struct {
+	mock.Mock
+	sf.MiddlewareWrapperFactory
+}
+
+func (m *mockMiddlewareWrapperFactory) NewMiddlewareWrapper(corsOptions *sf.CORSOptions, authFunc sf.AuthorizationFunc) sf.MiddlewareWrapper {
+	a := m.Called(corsOptions, authFunc)
+	return a.Get(0).(sf.MiddlewareWrapper)
+}
+
 /* sf.MiddlewareWrapper mock */
 
 type mockMiddlewareWrapper struct {
@@ -240,9 +252,9 @@ func (m *mockServiceHandlerFactory) Wrap(subsystem, name string, middlewares []s
 	return a.Get(0).(httprouter.Handle)
 }
 
-func (m *mockServiceHandlerFactory) NewHandlers() *sf.Handlers {
+func (m *mockServiceHandlerFactory) NewHandlers() sf.Handlers {
 	a := m.Called()
-	return a.Get(0).(*sf.Handlers)
+	return a.Get(0).(sf.Handlers)
 }
 
 /* sf.RootHandler mock */

@@ -58,7 +58,7 @@ type (
 
 	// ServiceHandlerFactory is an interface to get access to implemented handlers.
 	ServiceHandlerFactory interface {
-		NewHandlers() *Handlers
+		NewHandlers() Handlers
 		WrapHandler
 	}
 
@@ -122,8 +122,8 @@ func (f *serviceHandlerFactoryImpl) Wrap(subsystem, name string, middlewares []M
 }
 
 // NewHandlers instantiates a new Handlers struct containing implemented handlers.
-func (f *serviceHandlerFactoryImpl) NewHandlers() *Handlers {
-	return &Handlers{
+func (f *serviceHandlerFactoryImpl) NewHandlers() Handlers {
+	return Handlers{
 		RootHandler:      f,
 		QuitHandler:      f,
 		MetricsHandler:   f,
