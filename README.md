@@ -25,7 +25,6 @@ ServiceFoundation enables you to create Web Services containing:
 * Optional authorization middleware
 
 To do:
-- [ ] De-duplicate CORS elements in slices
 - [ ] Automated documentation (GoDocs?)
 
 ## Package usage

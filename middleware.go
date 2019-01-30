@@ -280,14 +280,13 @@ func (m *middlewareWrapperImpl) wrapWithCORS(subsystem, name string, handler Han
 }
 
 func (m *middlewareWrapperImpl) mergeCORSOptions(options *CORSOptions) *cors.Options {
-	// TODO: de-duplicate elements in slices
 	corsOptions := cors.Options{
 		AllowedOrigins: options.AllowedOrigins,
-		AllowedMethods: append(options.AllowedMethods, "HEAD", "OPTIONS"),
-		AllowedHeaders: append(options.AllowedHeaders,
+		AllowedMethods: appendAndDedupe(options.AllowedMethods, "HEAD", "OPTIONS"),
+		AllowedHeaders: appendAndDedupe(options.AllowedHeaders,
 			"Origin", "Accept", "Content-Type", "X-Requested-With", "X-CSRF-Token"),
 		AllowCredentials: true,
-		ExposedHeaders: append(options.ExposedHeaders,
+		ExposedHeaders: appendAndDedupe(options.ExposedHeaders,
 			"Access-Control-Allow-Headers",
 			"Access-Control-Allow-Methods",
 			"Access-Control-Max-Age",
@@ -296,6 +295,22 @@ func (m *middlewareWrapperImpl) mergeCORSOptions(options *CORSOptions) *cors.Opt
 		MaxAge: options.MaxAge,
 	}
 	return &corsOptions
+}
+
+func appendAndDedupe(slice []string, elements ...string) []string {
+	var result []string
+
+	temp := append(slice, elements...)
+
+	for i := 0; i < len(temp); i++ {
+		for j := 0; j < len(result); j++ {
+			if temp[i] == result[j] {
+				break
+			}
+		}
+		result = append(result, temp[i])
+	}
+	return result
 }
 
 func (m *middlewareWrapperImpl) wrapWithPanicHandler(subsystem, name string, handler Handle, metaFunc MetaFunc) Handle {

@@ -30,7 +30,9 @@ func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
 		logFactory := &mockLogFactory{}
 		log := &mockLogger{}
 		m := &mockMetrics{}
-		corsOptions := &sf.CORSOptions{}
+		corsOptions := &sf.CORSOptions{
+			AllowedMethods: []string{"HEAD"},
+		}
 		handleCalled := false
 		handle := func(sf.WrappedResponseWriter, *http.Request, sf.HandlerUtils) {
 			handleCalled = true
