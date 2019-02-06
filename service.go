@@ -54,30 +54,20 @@ type (
 		Handlers                 Handlers
 		WrapHandler              WrapHandler
 		VersionBuilder           VersionBuilder
-		ServiceStateReader       ServiceStateReader
+		ServiceStateManager      ServiceStateManager
 		ShutdownFunc             ShutdownFunc
 		AuthFunc                 AuthorizationFunc
-		ExitFunc                 func(Logger)
 		ServerTimeout            time.Duration
 		IdleTimeout              time.Duration
 		UsePublicRootHandler     bool
 		systemLogger             Logger
 	}
 
-	// ServiceStateReader contains state methods used by the service's handler implementations.
-	ServiceStateReader interface {
-		IsLive() bool
-		IsReady() bool
-		IsHealthy() bool
-	}
-
 	// Service is the main interface for ServiceFoundation and is used to define routing and running the service.
 	Service interface {
 		Run(ctx context.Context)
-		AddRoute(name string, routes []string, methods []string, middlewares []Middleware, metaFunc MetaFunc, handler Handle)
-	}
 
-	serviceStateReaderImpl struct {
+		AddRoute(name string, routes []string, methods []string, middlewares []Middleware, metaFunc MetaFunc, handler Handle)
 	}
 
 	serviceImpl struct {
@@ -96,7 +86,7 @@ type (
 		handlers             Handlers
 		wrapHandler          WrapHandler
 		versionBuilder       VersionBuilder
-		stateReader          ServiceStateReader
+		stateManager         ServiceStateManager
 		shutdownFunc         ShutdownFunc
 		exitFunc             ExitFunc
 		quitting             bool
@@ -114,12 +104,18 @@ func NewDefaultServiceOptions(group, name string) ServiceOptions {
 	return NewServiceOptions(group, name,
 		[]string{http.MethodGet, http.MethodPost, http.MethodOptions},
 		BuildVersion{},
-		make(map[string]string))
+		make(map[string]string),
+		NewDefaultServiceStateManger(),
+	)
 }
 
 // NewServiceOptions creates and returns ServiceOptions that use environment variables for default configuration.
-func NewServiceOptions(group, name string, allowedMethods []string,
-	version BuildVersion, meta map[string]string) ServiceOptions {
+func NewServiceOptions(group, name string,
+	allowedMethods []string,
+	version BuildVersion,
+	meta map[string]string,
+	stateManager ServiceStateManager,
+) ServiceOptions {
 
 	appName := env.OrDefault(envAppName, name)
 	serverName := env.OrDefault(envServerName, name)
@@ -141,7 +137,6 @@ func NewServiceOptions(group, name string, allowedMethods []string,
 	metrics := NewMetrics(name, logger)
 	versionBuilder := NewVersionBuilder(version)
 	middlewareWrapperFactory := NewMiddlewareWrapperFactory(logger, globals)
-	stateReader := NewServiceStateReader()
 	port := env.AsInt(envHTTPpPort, defaultHTTPPort)
 
 	opt := ServiceOptions{
@@ -157,12 +152,11 @@ func NewServiceOptions(group, name string, allowedMethods []string,
 		LogFactory:               logFactory,
 		Metrics:                  metrics,
 		VersionBuilder:           versionBuilder,
-		ServiceStateReader:       stateReader,
+		ServiceStateManager:      stateManager,
 		AuthFunc: func(WrappedResponseWriter, *http.Request, HandlerUtils) bool {
 			// By default, anyone is authorized
 			return true
 		},
-		ExitFunc:             func(_ Logger) {},
 		UsePublicRootHandler: true,
 		systemLogger:         logger,
 	}
@@ -177,7 +171,7 @@ func NewService(options ServiceOptions) Service {
 		options.systemLogger = options.LogFactory.NewLogger(serviceMeta)
 	}
 
-	return &serviceImpl{
+	service := serviceImpl{
 		globals:              options.Globals,
 		serverTimeout:        options.ServerTimeout,
 		idleTimeout:          options.IdleTimeout,
@@ -193,12 +187,16 @@ func NewService(options ServiceOptions) Service {
 		handlers:             options.Handlers,
 		wrapHandler:          options.WrapHandler,
 		versionBuilder:       options.VersionBuilder,
-		stateReader:          options.ServiceStateReader,
-		exitFunc:             newExitFunc(options.systemLogger, options.ExitFunc),
+		stateManager:         options.ServiceStateManager,
+		exitFunc:             newExitFunc(options.systemLogger, options.ServiceStateManager),
 		sendChan:             make(chan bool, 1),
 		receiveChan:          make(chan bool, 1),
 		usePublicRootHandler: options.UsePublicRootHandler,
 	}
+
+	service.stateManager.WarmUp()
+
+	return &service
 }
 
 func createServiceMeta(baseMeta map[string]string, globals ServiceGlobals) map[string]string {
@@ -214,14 +212,14 @@ func createServiceMeta(baseMeta map[string]string, globals ServiceGlobals) map[s
 
 // newExitFunc returns a new exit function. It wraps the shutdownFunc and executed an os.exit after the shutdown is
 // completed with a slight delay, giving the quit handler a chance to return a status.
-func newExitFunc(log Logger, shutdownFunc ShutdownFunc) func(int) {
+func newExitFunc(log Logger, stateManager ServiceStateManager) func(int) {
 	return func(code int) {
 		log.Debug("ServiceExit", "Performing service exit")
 
 		go func() {
-			if shutdownFunc != nil {
-				log.Debug("ShutdownFunc", "Calling shutdown func")
-				shutdownFunc(log)
+			if stateManager != nil {
+				log.Debug("ShutdownFunc", "Calling state manager's shutdown")
+				stateManager.ShutDown(log)
 			}
 
 			if code != 0 {
@@ -237,34 +235,14 @@ func newExitFunc(log Logger, shutdownFunc ShutdownFunc) func(int) {
 	}
 }
 
-// NewServiceStateReader instantiates a new basic ServiceStateReader implementation, which always returns true
-// for it's state methods.
-func NewServiceStateReader() ServiceStateReader {
-	return &serviceStateReaderImpl{}
-}
-
-/* ServiceStateReader implementation */
-
-func (s *serviceStateReaderImpl) IsLive() bool {
-	return true
-}
-
-func (s *serviceStateReaderImpl) IsReady() bool {
-	return true
-}
-
-func (s *serviceStateReaderImpl) IsHealthy() bool {
-	return true
-}
-
 /* ServiceOptions implementation */
 
 // setHandlers is used to update the handler references in ServiceOptions to use the correct middleware and state.
 func (o *ServiceOptions) setHandlers() {
 	middlewareWrapper := o.MiddlewareWrapperFactory.NewMiddlewareWrapper(&o.CORSOptions, o.AuthFunc)
-	wrappedExitFunc := newExitFunc(o.systemLogger, o.ExitFunc)
+	wrappedExitFunc := newExitFunc(o.systemLogger, o.ServiceStateManager)
 
-	factory := NewServiceHandlerFactory(middlewareWrapper, o.VersionBuilder, o.ServiceStateReader, wrappedExitFunc,
+	factory := NewServiceHandlerFactory(middlewareWrapper, o.VersionBuilder, o.ServiceStateManager, wrappedExitFunc,
 		o.LogFactory, o.Metrics)
 
 	o.Handlers = factory.NewHandlers()

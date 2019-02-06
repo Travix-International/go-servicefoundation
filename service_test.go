@@ -23,10 +23,9 @@ func TestNewDefaultServiceOptions(t *testing.T) {
 	assert.True(t, sut.AuthFunc(w, r, sf.HandlerUtils{}))
 	assert.NotNil(t, sut.LogFactory)
 	assert.NotNil(t, sut.MiddlewareWrapperFactory)
-	assert.NotNil(t, sut.ServiceStateReader)
+	assert.NotNil(t, sut.ServiceStateManager)
 	assert.NotNil(t, sut.VersionBuilder)
 	assert.NotNil(t, sut.WrapHandler)
-	sut.ExitFunc(nil)
 }
 
 func TestNewService(t *testing.T) {
@@ -46,6 +45,7 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 	rf := &mockRouterFactory{}
 	shf := &mockServiceHandlerFactory{}
 	preFlightH := &mockPreFlightHandler{}
+	stateManager := &mockServiceStateManager{}
 
 	handlers := sf.Handlers{
 		PreFlightHandler: preFlightH,
@@ -55,18 +55,19 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 		Globals: sf.ServiceGlobals{
 			AppName: "test-service",
 		},
-		LogFactory:     logFactory,
-		Metrics:        m,
-		Port:           1234,
-		ReadinessPort:  1235,
-		InternalPort:   1236,
-		ShutdownFunc:   func(log sf.Logger) {},
-		VersionBuilder: v,
-		RouterFactory:  rf,
-		Handlers:       handlers,
-		WrapHandler:    shf,
-		ServerTimeout:  time.Second * 3,
-		IdleTimeout:    time.Second * 3,
+		LogFactory:          logFactory,
+		Metrics:             m,
+		Port:                1234,
+		ReadinessPort:       1235,
+		InternalPort:        1236,
+		ShutdownFunc:        func(log sf.Logger) {},
+		VersionBuilder:      v,
+		RouterFactory:       rf,
+		Handlers:            handlers,
+		WrapHandler:         shf,
+		ServiceStateManager: stateManager,
+		ServerTimeout:       time.Second * 3,
+		IdleTimeout:         time.Second * 3,
 	}
 	var wrappedHandle httprouter.Handle = func(http.ResponseWriter, *http.Request, httprouter.Params) {}
 	metaFunc := func(*http.Request, sf.RouterParams) map[string]string {
@@ -90,6 +91,7 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 		Return(&router).
 		Times(3) // public, readiness and internal
 	preFlightH.On("NewPreFlightHandler").Return(preFlightHandle)
+	stateManager.On("WarmUp").Once()
 
 	sut := sf.NewService(opt)
 
@@ -99,6 +101,7 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 	shf.AssertExpectations(t)
 	rf.AssertExpectations(t)
 	preFlightH.AssertExpectations(t)
+	stateManager.AssertExpectations(t)
 }
 
 func TestServiceImpl_AddRouteWithCORS(t *testing.T) {
@@ -109,6 +112,7 @@ func TestServiceImpl_AddRouteWithCORS(t *testing.T) {
 	rf := &mockRouterFactory{}
 	shf := &mockServiceHandlerFactory{}
 	preFlightH := &mockPreFlightHandler{}
+	stateManager := &mockServiceStateManager{}
 
 	handlers := sf.Handlers{
 		PreFlightHandler: preFlightH,
@@ -118,18 +122,19 @@ func TestServiceImpl_AddRouteWithCORS(t *testing.T) {
 		Globals: sf.ServiceGlobals{
 			AppName: "test-service",
 		},
-		LogFactory:     logFactory,
-		Metrics:        m,
-		Port:           1234,
-		ReadinessPort:  1235,
-		InternalPort:   1236,
-		ShutdownFunc:   func(log sf.Logger) {},
-		VersionBuilder: v,
-		RouterFactory:  rf,
-		Handlers:       handlers,
-		WrapHandler:    shf,
-		ServerTimeout:  time.Second * 3,
-		IdleTimeout:    time.Second * 3,
+		LogFactory:          logFactory,
+		Metrics:             m,
+		Port:                1234,
+		ReadinessPort:       1235,
+		InternalPort:        1236,
+		ShutdownFunc:        func(log sf.Logger) {},
+		VersionBuilder:      v,
+		RouterFactory:       rf,
+		Handlers:            handlers,
+		WrapHandler:         shf,
+		ServiceStateManager: stateManager,
+		ServerTimeout:       time.Second * 3,
+		IdleTimeout:         time.Second * 3,
 	}
 	var wrappedHandle httprouter.Handle = func(http.ResponseWriter, *http.Request, httprouter.Params) {}
 	metaFunc := func(*http.Request, sf.RouterParams) map[string]string {
@@ -160,6 +165,7 @@ func TestServiceImpl_AddRouteWithCORS(t *testing.T) {
 		Return(&router).
 		Times(3) // public, readiness and internal
 	preFlightH.On("NewPreFlightHandler").Return(preFlightHandle)
+	stateManager.On("WarmUp").Once()
 
 	sut := sf.NewService(opt)
 
@@ -169,6 +175,7 @@ func TestServiceImpl_AddRouteWithCORS(t *testing.T) {
 	shf.AssertExpectations(t)
 	rf.AssertExpectations(t)
 	preFlightH.AssertExpectations(t)
+	stateManager.AssertExpectations(t)
 	assert.True(t, hasPreFlightCORS)
 }
 
@@ -180,6 +187,7 @@ func TestServiceImpl_AddRouteWithHandledPreFlight(t *testing.T) {
 	rf := &mockRouterFactory{}
 	shf := &mockServiceHandlerFactory{}
 	preFlightH := &mockPreFlightHandler{}
+	stateManager := &mockServiceStateManager{}
 
 	handlers := sf.Handlers{
 		PreFlightHandler: preFlightH,
@@ -189,18 +197,19 @@ func TestServiceImpl_AddRouteWithHandledPreFlight(t *testing.T) {
 		Globals: sf.ServiceGlobals{
 			AppName: "test-service",
 		},
-		LogFactory:     logFactory,
-		Metrics:        m,
-		Port:           1234,
-		ReadinessPort:  1235,
-		InternalPort:   1236,
-		ShutdownFunc:   func(log sf.Logger) {},
-		VersionBuilder: v,
-		RouterFactory:  rf,
-		Handlers:       handlers,
-		WrapHandler:    shf,
-		ServerTimeout:  time.Second * 3,
-		IdleTimeout:    time.Second * 3,
+		LogFactory:          logFactory,
+		Metrics:             m,
+		Port:                1234,
+		ReadinessPort:       1235,
+		InternalPort:        1236,
+		ShutdownFunc:        func(log sf.Logger) {},
+		VersionBuilder:      v,
+		RouterFactory:       rf,
+		Handlers:            handlers,
+		WrapHandler:         shf,
+		ServiceStateManager: stateManager,
+		ServerTimeout:       time.Second * 3,
+		IdleTimeout:         time.Second * 3,
 	}
 	var wrappedHandle httprouter.Handle = func(http.ResponseWriter, *http.Request, httprouter.Params) {}
 	metaFunc := func(*http.Request, sf.RouterParams) map[string]string {
@@ -219,6 +228,7 @@ func TestServiceImpl_AddRouteWithHandledPreFlight(t *testing.T) {
 		On("NewRouter").
 		Return(&router).
 		Times(3) // public, readiness and internal
+	stateManager.On("WarmUp").Once()
 
 	sut := sf.NewService(opt)
 
@@ -227,6 +237,7 @@ func TestServiceImpl_AddRouteWithHandledPreFlight(t *testing.T) {
 
 	shf.AssertExpectations(t)
 	rf.AssertExpectations(t)
+	stateManager.AssertExpectations(t)
 }
 
 func TestServiceImpl_Run(t *testing.T) {
@@ -236,6 +247,7 @@ func TestServiceImpl_Run(t *testing.T) {
 	v := &mockVersionBuilder{}
 	rf := &mockRouterFactory{}
 	shf := &mockServiceHandlerFactory{}
+	stateManager := &mockServiceStateManager{}
 
 	publicRouter := httprouter.Router{}
 	readinessRouter := httprouter.Router{}
@@ -290,6 +302,13 @@ func TestServiceImpl_Run(t *testing.T) {
 		On("NewRouter").
 		Return(&publicRouter).
 		Once()
+	stateManager.On("WarmUp").Once()
+	stateManager.On("ShutDown", mock.Anything).Run(func(args mock.Arguments) {
+		fmt.Println("Exit called!")
+		// We need to sleep longer in order for the test to finish before this function exits
+		time.Sleep(50 * time.Millisecond)
+	})
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
 
@@ -297,21 +316,17 @@ func TestServiceImpl_Run(t *testing.T) {
 		Globals: sf.ServiceGlobals{
 			AppName: "test-service",
 		},
-		LogFactory:     logFactory,
-		Metrics:        m,
-		Port:           1234,
-		ReadinessPort:  1235,
-		InternalPort:   1236,
-		ShutdownFunc:   func(log sf.Logger) {},
-		VersionBuilder: v,
-		RouterFactory:  rf,
-		Handlers:       handlers,
-		WrapHandler:    shf,
-		ExitFunc: func(_ sf.Logger) {
-			fmt.Println("Exit called!")
-			// We need to sleep longer in order for the test to finish before this function exits
-			time.Sleep(50 * time.Millisecond)
-		},
+		LogFactory:           logFactory,
+		Metrics:              m,
+		Port:                 1234,
+		ReadinessPort:        1235,
+		InternalPort:         1236,
+		ShutdownFunc:         func(log sf.Logger) {},
+		VersionBuilder:       v,
+		RouterFactory:        rf,
+		Handlers:             handlers,
+		WrapHandler:          shf,
+		ServiceStateManager:  stateManager,
 		ServerTimeout:        time.Second * 3,
 		IdleTimeout:          time.Second * 3,
 		UsePublicRootHandler: true,
@@ -341,6 +356,7 @@ func TestServiceImpl_Run_NoPublicRootHandler(t *testing.T) {
 	v := &mockVersionBuilder{}
 	rf := &mockRouterFactory{}
 	shf := &mockServiceHandlerFactory{}
+	stateManager := &mockServiceStateManager{}
 
 	publicRouter := httprouter.Router{}
 	readinessRouter := httprouter.Router{}
@@ -395,6 +411,13 @@ func TestServiceImpl_Run_NoPublicRootHandler(t *testing.T) {
 		On("NewRouter").
 		Return(&publicRouter).
 		Once()
+	stateManager.On("WarmUp").Once()
+	stateManager.On("ShutDown", mock.Anything).Run(func(args mock.Arguments) {
+		fmt.Println("Exit called!")
+		// We need to sleep longer in order for the test to finish before this function exits
+		time.Sleep(50 * time.Millisecond)
+	})
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
 
@@ -402,21 +425,17 @@ func TestServiceImpl_Run_NoPublicRootHandler(t *testing.T) {
 		Globals: sf.ServiceGlobals{
 			AppName: "test-service",
 		},
-		LogFactory:     logFactory,
-		Metrics:        m,
-		Port:           1234,
-		ReadinessPort:  1235,
-		InternalPort:   1236,
-		ShutdownFunc:   func(log sf.Logger) {},
-		VersionBuilder: v,
-		RouterFactory:  rf,
-		Handlers:       handlers,
-		WrapHandler:    shf,
-		ExitFunc: func(_ sf.Logger) {
-			fmt.Println("Exit called!")
-			// We need to sleep longer in order for the test to finish before this function exits
-			time.Sleep(50 * time.Millisecond)
-		},
+		LogFactory:           logFactory,
+		Metrics:              m,
+		Port:                 1234,
+		ReadinessPort:        1235,
+		InternalPort:         1236,
+		ShutdownFunc:         func(log sf.Logger) {},
+		VersionBuilder:       v,
+		RouterFactory:        rf,
+		Handlers:             handlers,
+		WrapHandler:          shf,
+		ServiceStateManager:  stateManager,
 		ServerTimeout:        time.Second * 3,
 		IdleTimeout:          time.Second * 3,
 		UsePublicRootHandler: false,
@@ -439,11 +458,17 @@ func TestServiceImpl_Run_NoPublicRootHandler(t *testing.T) {
 	versionH.AssertExpectations(t)
 }
 
-func TestNewServiceStateReader(t *testing.T) {
+func TestNewDefaultServiceStateManger(t *testing.T) {
+	log := &mockLogger{}
+
 	// Act
-	sut := sf.NewServiceStateReader()
+	sut := sf.NewDefaultServiceStateManger()
+
+	sut.WarmUp()
 
 	assert.True(t, sut.IsLive())
 	assert.True(t, sut.IsReady())
 	assert.True(t, sut.IsHealthy())
+
+	sut.ShutDown(log)
 }

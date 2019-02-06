@@ -374,3 +374,33 @@ func (m *mockServiceStateReader) IsHealthy() bool {
 	a := m.Called()
 	return a.Bool(0)
 }
+
+/* sf.ServiceStateManager mock */
+
+type mockServiceStateManager struct {
+	mock.Mock
+	sf.ServiceStateManager
+}
+
+func (m *mockServiceStateManager) IsLive() bool {
+	a := m.Called()
+	return a.Bool(0)
+}
+
+func (m *mockServiceStateManager) IsReady() bool {
+	a := m.Called()
+	return a.Bool(0)
+}
+
+func (m *mockServiceStateManager) IsHealthy() bool {
+	a := m.Called()
+	return a.Bool(0)
+}
+
+func (m *mockServiceStateManager) WarmUp() {
+	m.Called()
+}
+
+func (m *mockServiceStateManager) ShutDown(logger sf.Logger) {
+	m.Called(logger)
+}

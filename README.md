@@ -112,36 +112,39 @@ import (
 
 var gitHash, versionNumber, buildDate string
 
-type CustomServiceStateReader struct {
-	sf.ServiceStateReader
+type CustomServiceStateManager struct {
+	sf.ServiceStateManager
 	isWarmedUp bool
 }
 
-func (r *CustomServiceStateReader) IsLive() bool {
+func (r *CustomServiceStateManager) IsLive() bool {
 	return true
 }
 
-func (r *CustomServiceStateReader) IsReady() bool {
+func (r *CustomServiceStateManager) IsReady() bool {
 	return r.isWarmedUp
 }
 
-func (r *CustomServiceStateReader) IsHealthy() bool {
+func (r *CustomServiceStateManager) IsHealthy() bool {
 	return true
 }
 
-func main() {
-	stateReader := &CustomServiceStateReader{}
+func (r *CustomServiceStateManager) WarmUp() {
+    // Simulating warm-up time...
+    time.Sleep(10 * time.Second)
+}
 
-	go func() {
-		// Simulating warm-up time...
-		time.Sleep(10 * time.Second)
-		stateReader.isWarmedUp = true
-	}()
+func (r *CustomServiceStateManager) ShutDown(logger sf.Logger) {
+    logger.Info("GracefulShutdown", "Handling graceful shutdown")
+}
+
+func main() {
+	stateManager := &CustomServiceStateManager{}
 
     // Use a global meta for logging additional fields during the service lifecycle
     globalMeta := make(map[string]string)
     globalMeta["hello"] = "world"
-
+    
 	opt := sf.NewServiceOptions(
 		"AppGroup", "HelloWorldService",
 		sf.MethodsForGet,
@@ -149,8 +152,7 @@ func main() {
 			GitHash:       gitHash,
 			VersionNumber: versionNumber,
 			BuildDate:     buildDate,
-		}, globalMeta)
-	opt.ServiceStateReader = stateReader
+		}, globalMeta, stateManager)
 	
 	opt.AuthFunc = func(_ sf.WrappedResponseWriter, _ *http.Request, u sf.HandlerUtils) bool {
         // Implement your own authorization here
@@ -159,10 +161,6 @@ func main() {
         return true 
     }
 	
-	opt.ExitFunc = func(log sf.Logger) {
-        log.Info("GracefulShutdown", "Handling graceful shutdown")
-    }
-
 	// Use this in case you want to handle the public root endpoint yourself instead of relying 
 	// on the default catch-all handling.
 	opt.UsePublicRootHandler = true
