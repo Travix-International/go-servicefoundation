@@ -216,22 +216,13 @@ func newExitFunc(log Logger, stateManager ServiceStateManager) func(int) {
 	return func(code int) {
 		log.Debug("ServiceExit", "Performing service exit")
 
-		go func() {
-			if stateManager != nil {
-				log.Debug("ShutdownFunc", "Calling state manager's shutdown")
-				stateManager.ShutDown(log)
-			}
+		if stateManager != nil {
+			log.Debug("ShutdownFunc", "Calling state manager's shutdown")
+			stateManager.ShutDown(log)
+		}
 
-			if code != 0 {
-				time.Sleep(500 * time.Millisecond)
-			}
-
-			log.Debug("ServiceExit", "Calling os.Exit(%v)", code)
-			os.Exit(code)
-		}()
-
-		// Allow the go-routine to be spawned
-		time.Sleep(1 * time.Millisecond)
+		log.Debug("ServiceExit", "Calling os.Exit(%v)", code)
+		os.Exit(code)
 	}
 }
 
