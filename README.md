@@ -130,8 +130,13 @@ func (r *CustomServiceStateManager) IsHealthy() bool {
 }
 
 func (r *CustomServiceStateManager) WarmUp() {
-    // Simulating warm-up time...
-    time.Sleep(10 * time.Second)
+	// This routine is not run in a go-routine, so we could use it to some last-minute
+	// bindings. If we do want to run it asynchronously, we have to use a go-routine here.
+	go func() {
+        // Simulating warm-up time...
+        time.Sleep(10 * time.Second)
+        r.isWarmedUp = true
+    }()
 }
 
 func (r *CustomServiceStateManager) ShutDown(logger sf.Logger) {
@@ -165,7 +170,7 @@ func main() {
 	// on the default catch-all handling.
 	opt.UsePublicRootHandler = true
 
-	svc := sf.NewService(opt)
+	svc := sf.NewService(opt) // Also triggers the service WarmUp
 
 	svc.AddRoute(
 		"helloworld",
