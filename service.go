@@ -104,7 +104,7 @@ func NewDefaultServiceOptions(group, name string) ServiceOptions {
 		BuildVersion{},
 		make(map[string]string),
 	)
-	opt.AddState(NewDefaultServiceStateManger())
+	opt.SetState(NewDefaultServiceStateManger())
 
 	return opt
 }
