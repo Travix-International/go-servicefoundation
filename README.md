@@ -144,8 +144,6 @@ func (r *CustomServiceStateManager) ShutDown(logger sf.Logger) {
 }
 
 func main() {
-	stateManager := &CustomServiceStateManager{}
-
     // Use a global meta for logging additional fields during the service lifecycle
     globalMeta := make(map[string]string)
     globalMeta["hello"] = "world"
@@ -157,7 +155,7 @@ func main() {
 			GitHash:       gitHash,
 			VersionNumber: versionNumber,
 			BuildDate:     buildDate,
-		}, globalMeta, stateManager)
+		}, globalMeta)
 	
 	opt.AuthFunc = func(_ sf.WrappedResponseWriter, _ *http.Request, u sf.HandlerUtils) bool {
         // Implement your own authorization here
@@ -169,6 +167,8 @@ func main() {
 	// Use this in case you want to handle the public root endpoint yourself instead of relying 
 	// on the default catch-all handling.
 	opt.UsePublicRootHandler = true
+
+	opt.SetState(&CustomServiceStateManager{})
 
 	svc := sf.NewService(opt) // Also triggers the service WarmUp
 

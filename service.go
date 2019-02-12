@@ -15,13 +15,11 @@ import (
 const (
 	envCORSOrigins       = "CORS_ORIGINS"
 	envHTTPpPort         = "HTTPPORT"
-	envLogMinFilter      = "LOG_MINFILTER"
 	envAppName           = "APP_NAME"
 	envServerName        = "SERVER_NAME"
 	envDeployEnvironment = "DEPLOY_ENVIRONMENT"
 
-	defaultHTTPPort     = 8080
-	defaultLogMinFilter = "Warning"
+	defaultHTTPPort = 8080
 
 	publicSubsystem = "public"
 )
@@ -101,12 +99,14 @@ var DefaultMiddlewares = []Middleware{PanicTo500, NoCaching}
 
 // NewDefaultServiceOptions creates and returns ServiceOptions using a default configuration.
 func NewDefaultServiceOptions(group, name string) ServiceOptions {
-	return NewServiceOptions(group, name,
+	opt := NewServiceOptions(group, name,
 		[]string{http.MethodGet, http.MethodPost, http.MethodOptions},
 		BuildVersion{},
 		make(map[string]string),
-		NewDefaultServiceStateManger(),
 	)
+	opt.AddState(NewDefaultServiceStateManger())
+
+	return opt
 }
 
 // NewServiceOptions creates and returns ServiceOptions that use environment variables for default configuration.
@@ -114,7 +114,6 @@ func NewServiceOptions(group, name string,
 	allowedMethods []string,
 	version BuildVersion,
 	meta map[string]string,
-	stateManager ServiceStateManager,
 ) ServiceOptions {
 
 	appName := env.OrDefault(envAppName, name)
@@ -132,7 +131,7 @@ func NewServiceOptions(group, name string,
 		VersionNumber:     version.VersionNumber,
 	}
 	serviceMeta := createServiceMeta(meta, globals)
-	logFactory := NewLogFactory(env.OrDefault(envLogMinFilter, defaultLogMinFilter), serviceMeta)
+	logFactory := NewLogFactory(GetLogFilter(), serviceMeta)
 	logger := logFactory.NewLogger(meta)
 	metrics := NewMetrics(name, logger)
 	versionBuilder := NewVersionBuilder(version)
@@ -152,7 +151,6 @@ func NewServiceOptions(group, name string,
 		LogFactory:               logFactory,
 		Metrics:                  metrics,
 		VersionBuilder:           versionBuilder,
-		ServiceStateManager:      stateManager,
 		AuthFunc: func(WrappedResponseWriter, *http.Request, HandlerUtils) bool {
 			// By default, anyone is authorized
 			return true
@@ -160,8 +158,12 @@ func NewServiceOptions(group, name string,
 		UsePublicRootHandler: true,
 		systemLogger:         logger,
 	}
-	opt.setHandlers()
 	return opt
+}
+
+func (opt *ServiceOptions) SetState(stateManager ServiceStateManager) {
+	opt.ServiceStateManager = stateManager
+	opt.setHandlers()
 }
 
 // NewService creates and returns a Service using the provided service options.

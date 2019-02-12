@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Travix-International/go-servicefoundation/env"
 	"github.com/Travix-International/logger"
 )
 
@@ -13,6 +14,9 @@ const (
 	minInfoLevel  = 2
 	minWarnLevel  = 3
 	defaultLevel  = 3 // Warning
+
+	envLogMinFilter     = "LOG_MINFILTER"
+	defaultLogMinFilter = "Warning"
 )
 
 type (
@@ -69,6 +73,10 @@ func NewLogFactory(logFilter string, baseMeta map[string]string) LogFactory {
 		logFilter: logFilter,
 		logLevel:  logLevel,
 	}
+}
+
+func GetLogFilter() string {
+	return env.OrDefault(envLogMinFilter, defaultLogMinFilter)
 }
 
 /* LogFactory implementation */
