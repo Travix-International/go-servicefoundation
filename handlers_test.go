@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	sf "github.com/Travix-International/go-servicefoundation"
-	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -235,38 +234,4 @@ func TestServiceHandlerFactoryImpl_CreatePreFlightHandler(t *testing.T) {
 	actual(w, nil, sf.HandlerUtils{})
 
 	w.AssertExpectations(t)
-}
-
-func TestServiceHandlerFactoryImpl_WrapHandler(t *testing.T) {
-	const subSystem = "my-sub"
-	const name = "my-name"
-	m := &mockMiddlewareWrapper{}
-	v := &mockVersionBuilder{}
-	exitFn := func(int) {}
-	rdr := &mockReader{}
-	r, _ := http.NewRequest("GET", "https://www.sf.com/some/url", rdr)
-	w := &mockResponseWriter{}
-	handlerCalled := false
-	handle := func(sf.WrappedResponseWriter, *http.Request, sf.HandlerUtils) {
-		handlerCalled = true
-	}
-	metaFunc := func(*http.Request, sf.RouterParams) map[string]string {
-		return make(map[string]string)
-	}
-	ssr := &mockServiceStateReader{}
-	logFactory := &mockLogFactory{}
-	log := &mockLogger{}
-	metrics := &mockMetrics{}
-	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn, logFactory, metrics)
-
-	w.On("JSON", http.StatusOK, mock.Anything).Once()
-	m.On("Wrap", subSystem, name, sf.CORS, mock.Anything, mock.Anything).Return(handle).Once()
-	m.On("Wrap", subSystem, name, sf.NoCaching, mock.Anything, mock.Anything).Return(handle).Once()
-	logFactory.On("NewLogger", mock.Anything).Return(log)
-
-	// Act
-	actual := sut.Wrap(subSystem, name, []sf.Middleware{sf.CORS, sf.NoCaching}, handle, metaFunc)
-	actual(w, r, httprouter.Params{})
-
-	assert.True(t, handlerCalled)
 }

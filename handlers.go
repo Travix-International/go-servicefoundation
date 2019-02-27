@@ -3,18 +3,12 @@ package servicefoundation
 import (
 	"net/http"
 
-	"github.com/julienschmidt/httprouter"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type (
 	// ExitFunc is the function signature for the exit function used by Service.
 	ExitFunc func(int)
-
-	// WrapHandler is an interface for wrapping a Handle with middleware.
-	WrapHandler interface {
-		Wrap(string, string, []Middleware, Handle, MetaFunc) httprouter.Handle
-	}
 
 	// RootHandler is an interface to instantiate a new root handler.
 	RootHandler interface {
@@ -59,7 +53,6 @@ type (
 	// ServiceHandlerFactory is an interface to get access to implemented handlers.
 	ServiceHandlerFactory interface {
 		NewHandlers() Handlers
-		WrapHandler
 	}
 
 	// Handlers is a struct containing references to handler implementations.
@@ -99,27 +92,6 @@ func NewServiceHandlerFactory(middlewareWrapper MiddlewareWrapper, versionBuilde
 }
 
 /* ServiceHandlerFactory implementation */
-
-// Wrap wraps the specified Handle with the specified middleware wrappers.
-func (f *serviceHandlerFactoryImpl) Wrap(subsystem, name string, middlewares []Middleware, handle Handle,
-	metaFunc MetaFunc) httprouter.Handle {
-
-	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-		h := handle
-
-		for i := 0; i < len(middlewares); i++ {
-			h = f.middlewareWrapper.Wrap(subsystem, name, middlewares[i], h, metaFunc)
-		}
-		rp := RouterParams{Params: p}
-		u := HandlerUtils{
-			Meta:       metaFunc(r, rp),
-			Params:     rp,
-			LogFactory: f.logFactory,
-			Metrics:    f.metrics,
-		}
-		h(NewWrappedResponseWriter(w), r, u)
-	}
-}
 
 // NewHandlers instantiates a new Handlers struct containing implemented handlers.
 func (f *serviceHandlerFactoryImpl) NewHandlers() Handlers {

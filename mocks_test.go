@@ -238,6 +238,21 @@ func (m *mockRouterFactory) NewRouter() sf.Router {
 	return a.Get(0).(sf.Router)
 }
 
+/* sf.Router mock */
+
+type mockRouter struct {
+	mock.Mock
+	sf.Router
+}
+
+func (m *mockRouter) Handle(method, path string, metaFunc sf.MetaFunc, handle sf.Handle) {
+	m.Called(method, path, metaFunc, handle)
+}
+
+func (m *mockRouter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	m.Called(w, r)
+}
+
 /* sf.ServiceHandlerFactory mock */
 
 type mockServiceHandlerFactory struct {

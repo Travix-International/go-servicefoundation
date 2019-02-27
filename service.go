@@ -50,7 +50,6 @@ type (
 		MiddlewareWrapperFactory MiddlewareWrapperFactory
 		CORSOptions              CORSOptions
 		Handlers                 Handlers
-		WrapHandler              WrapHandler
 		VersionBuilder           VersionBuilder
 		ServiceStateManager      ServiceStateManager
 		ShutdownFunc             ShutdownFunc
@@ -82,7 +81,6 @@ type (
 		readinessRouter      Router
 		internalRouter       Router
 		handlers             Handlers
-		wrapHandler          WrapHandler
 		versionBuilder       VersionBuilder
 		stateManager         ServiceStateManager
 		shutdownFunc         ShutdownFunc
@@ -147,7 +145,7 @@ func NewServiceOptions(group, name string,
 		InternalPort:             port + 2,
 		MiddlewareWrapperFactory: middlewareWrapperFactory,
 		CORSOptions:              corsOptions,
-		RouterFactory:            NewRouterFactory(),
+		RouterFactory:            NewRouterFactory(logFactory, metrics),
 		LogFactory:               logFactory,
 		Metrics:                  metrics,
 		VersionBuilder:           versionBuilder,
@@ -159,11 +157,6 @@ func NewServiceOptions(group, name string,
 		systemLogger:         logger,
 	}
 	return opt
-}
-
-func (opt *ServiceOptions) SetState(stateManager ServiceStateManager) {
-	opt.ServiceStateManager = stateManager
-	opt.setHandlers()
 }
 
 // NewService creates and returns a Service using the provided service options.
@@ -187,7 +180,6 @@ func NewService(options ServiceOptions) Service {
 		readinessRouter:      options.RouterFactory.NewRouter(),
 		internalRouter:       options.RouterFactory.NewRouter(),
 		handlers:             options.Handlers,
-		wrapHandler:          options.WrapHandler,
 		versionBuilder:       options.VersionBuilder,
 		stateManager:         options.ServiceStateManager,
 		exitFunc:             newExitFunc(options.systemLogger, options.ServiceStateManager),
@@ -230,6 +222,12 @@ func newExitFunc(log Logger, stateManager ServiceStateManager) func(int) {
 
 /* ServiceOptions implementation */
 
+// SetState assigns a state manager and re-binds the handlers.
+func (o *ServiceOptions) SetState(stateManager ServiceStateManager) {
+	o.ServiceStateManager = stateManager
+	o.setHandlers()
+}
+
 // setHandlers is used to update the handler references in ServiceOptions to use the correct middleware and state.
 func (o *ServiceOptions) setHandlers() {
 	middlewareWrapper := o.MiddlewareWrapperFactory.NewMiddlewareWrapper(&o.CORSOptions, o.AuthFunc)
@@ -239,7 +237,6 @@ func (o *ServiceOptions) setHandlers() {
 		o.LogFactory, o.Metrics)
 
 	o.Handlers = factory.NewHandlers()
-	o.WrapHandler = factory
 }
 
 /* Service implementation */
@@ -294,15 +291,13 @@ func (s *serviceImpl) AddRoute(name string, routes []string, methods []string, m
 }
 
 func (s *serviceImpl) addRoute(router Router, subsystem, name string, routes []string, methods []string, middlewares []Middleware, handler Handle) {
-	defaultMetaFunc := func(_ *http.Request, _ RouterParams) map[string]string {
-		return make(map[string]string)
+	defaultMetaFunc := func(_ *http.Request, _ RouteParamsFunc) Meta {
+		return createServiceMeta(make(map[string]string), s.globals)
 	}
 
 	for _, path := range routes {
-		wrappedHandler := s.wrapHandler.Wrap(subsystem, name, middlewares, handler, defaultMetaFunc)
-
 		for _, method := range methods {
-			router.Handle(method, path, wrappedHandler)
+			router.Handle(method, path, defaultMetaFunc, handler)
 		}
 	}
 }
@@ -311,11 +306,10 @@ func (s *serviceImpl) addRouteWithMetaAndPreFlight(router Router, subsystem, nam
 	middlewares []Middleware, metaFunc MetaFunc, handler Handle) {
 
 	for _, path := range routes {
-		wrappedHandler := s.wrapHandler.Wrap(subsystem, name, middlewares, handler, metaFunc)
 		preFlightHandled := false
 
 		for _, method := range methods {
-			router.Handle(method, path, wrappedHandler)
+			router.Handle(method, path, metaFunc, handler)
 			preFlightHandled = preFlightHandled || method == http.MethodOptions
 		}
 
@@ -340,12 +334,10 @@ func (s *serviceImpl) addPreFlightHandle(subsystem string, name string, middlewa
 	}
 
 	preFlightHandler := s.handlers.PreFlightHandler.NewPreFlightHandler()
-	wrappedPreFlightHandler := s.wrapHandler.Wrap(subsystem, fmt.Sprintf("%v-preflight", name),
-		preFlightMiddlewares, preFlightHandler, metaFunc)
-	router.Handle(http.MethodOptions, path, wrappedPreFlightHandler)
+	router.Handle(http.MethodOptions, path, metaFunc, preFlightHandler)
 }
 
-func (s *serviceImpl) runHTTPServer(port int, router Router) {
+func (s *serviceImpl) runHTTPServer(port int, router http.Handler) {
 	addr := fmt.Sprintf(":%v", port)
 	svr := &http.Server{
 		ReadTimeout:  s.serverTimeout,

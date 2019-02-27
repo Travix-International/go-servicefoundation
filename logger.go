@@ -75,6 +75,7 @@ func NewLogFactory(logFilter string, baseMeta map[string]string) LogFactory {
 	}
 }
 
+// GetLogFilter returns the log filter based on environment settings.
 func GetLogFilter() string {
 	return env.OrDefault(envLogMinFilter, defaultLogMinFilter)
 }

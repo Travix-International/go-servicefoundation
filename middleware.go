@@ -136,10 +136,10 @@ func (m *middlewareWrapperImpl) wrapWithHistogram(subsystem, name string, handle
 
 func (m *middlewareWrapperImpl) wrapWithRequestLogging(subsystem, name string, handler Handle, metaFunc MetaFunc) Handle {
 	return func(w WrappedResponseWriter, r *http.Request, u HandlerUtils) {
-		meta := metaFunc(r, u.Params)
+		meta := metaFunc(r, u.ParamsFunc)
 		m.addRequestResponseToMeta(w, r, meta)
-		log := u.NewLoggerWithMeta(meta)
-		log.Info("ApiRequest", m.getRequestStartMessage(r, u.Params, meta))
+		log := u.NewLoggerWithMeta(meta, r)
+		log.Info("ApiRequest", m.getRequestStartMessage(r, u.ParamsFunc, meta))
 
 		start := time.Now()
 
@@ -150,16 +150,16 @@ func (m *middlewareWrapperImpl) wrapWithRequestLogging(subsystem, name string, h
 
 		meta["entry.duration"] = durationMs
 		m.addRequestResponseToMeta(w, r, meta)
-		log = u.NewLoggerWithMeta(meta)
-		log.Info("ApiResponse", m.getRequestEndMessage(w, r, u.Params, meta, durationMs))
+		log = u.NewLoggerWithMeta(meta, r)
+		log.Info("ApiResponse", m.getRequestEndMessage(w, r, u.ParamsFunc, meta, durationMs))
 	}
 }
 
-func (m *middlewareWrapperImpl) getRequestStartMessage(r *http.Request, p RouterParams, meta map[string]string) string {
+func (m *middlewareWrapperImpl) getRequestStartMessage(r *http.Request, p RouteParamsFunc, meta map[string]string) string {
 	return fmt.Sprintf("%s %s", r.Method, meta["entry.http.url"])
 }
 
-func (m *middlewareWrapperImpl) getRequestEndMessage(w WrappedResponseWriter, r *http.Request, p RouterParams, meta map[string]string, durationMs string) string {
+func (m *middlewareWrapperImpl) getRequestEndMessage(w WrappedResponseWriter, r *http.Request, p RouteParamsFunc, meta map[string]string, durationMs string) string {
 	status := strconv.Itoa(w.Status())
 	contentType := w.Header().Get("content-type")
 
@@ -317,8 +317,8 @@ func (m *middlewareWrapperImpl) wrapWithPanicHandler(subsystem, name string, han
 	return func(w WrappedResponseWriter, r *http.Request, u HandlerUtils) {
 		defer func() {
 			if rec := recover(); rec != nil {
-				meta := metaFunc(r, u.Params)
-				log := u.NewLoggerWithMeta(meta)
+				meta := metaFunc(r, u.ParamsFunc)
+				log := u.NewLoggerWithMeta(meta, r)
 				log.Error("PanicAutorecover", "PANIC recovered: %v\n%s", rec, string(debug.Stack()))
 				w.WriteHeader(http.StatusInternalServerError)
 			}
