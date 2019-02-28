@@ -77,7 +77,7 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 	rf.
 		On("NewRouter").
 		Return(router).
-		Times(3) // public, readiness and internal
+		Times(1) // public (readiness and internal are created internally)
 	router.
 		On("Handle", mock.Anything, "/do", mock.Anything, mock.Anything).
 		Times(3) // OPTIONS, GET & POST
@@ -140,7 +140,7 @@ func TestServiceImpl_AddRouteWithCORS(t *testing.T) {
 	rf.
 		On("NewRouter").
 		Return(router).
-		Times(3) // public, readiness and internal
+		Times(1) // public (readiness and internal are created internally)
 	router.
 		On("Handle", mock.Anything, "/do", mock.Anything, mock.Anything).
 		Times(2) // OPTIONS & GET
@@ -197,7 +197,7 @@ func TestServiceImpl_AddRouteWithHandledPreFlight(t *testing.T) {
 	rf.
 		On("NewRouter").
 		Return(router).
-		Times(3) // public, readiness and internal
+		Times(1) // public (readiness and internal are created internally)
 	router.
 		On("Handle", mock.Anything, "/do", mock.Anything, mock.Anything).
 		Times(3) // OPTIONS & GET
@@ -220,9 +220,7 @@ func TestServiceImpl_Run(t *testing.T) {
 	rf := &mockRouterFactory{}
 	stateManager := &mockServiceStateManager{}
 
-	publicRouter := &mockRouter{}
-	readinessRouter := &mockRouter{}
-	internalRouter := &mockRouter{}
+	router := &mockRouter{}
 
 	var handle sf.Handle = func(sf.WrappedResponseWriter, *http.Request, sf.HandlerUtils) {}
 
@@ -259,25 +257,11 @@ func TestServiceImpl_Run(t *testing.T) {
 	versionH.On("NewVersionHandler").Return(handle).Once()
 	rf.
 		On("NewRouter").
-		Return(readinessRouter).
+		Return(router).
 		Once()
-	rf.
-		On("NewRouter").
-		Return(internalRouter).
-		Once()
-	rf.
-		On("NewRouter").
-		Return(publicRouter).
-		Once()
-	publicRouter.
-		On("Handle", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Times(5)
-	readinessRouter.
+	router.
 		On("Handle", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Times(4)
-	internalRouter.
-		On("Handle", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Times(3)
 	stateManager.On("WarmUp").Once()
 	stateManager.On("ShutDown", mock.Anything).Run(func(args mock.Arguments) {
 		fmt.Println("Exit called!")
@@ -292,19 +276,19 @@ func TestServiceImpl_Run(t *testing.T) {
 		Globals: sf.ServiceGlobals{
 			AppName: "test-service",
 		},
-		LogFactory:           logFactory,
-		Metrics:              m,
-		Port:                 1234,
-		ReadinessPort:        1235,
-		InternalPort:         1236,
-		ShutdownFunc:         func(log sf.Logger) {},
-		VersionBuilder:       v,
-		RouterFactory:        rf,
-		Handlers:             handlers,
-		ServiceStateManager:  stateManager,
-		ServerTimeout:        time.Second * 3,
-		IdleTimeout:          time.Second * 3,
-		UsePublicRootHandler: true,
+		LogFactory:                  logFactory,
+		Metrics:                     m,
+		Port:                        1234,
+		ReadinessPort:               1235,
+		InternalPort:                1236,
+		ShutdownFunc:                func(log sf.Logger) {},
+		VersionBuilder:              v,
+		RouterFactory:               rf,
+		Handlers:                    handlers,
+		ServiceStateManager:         stateManager,
+		ServerTimeout:               time.Second * 3,
+		IdleTimeout:                 time.Second * 3,
+		CreatePublicServiceHandlers: true,
 	}
 
 	sut := sf.NewService(opt)
@@ -314,9 +298,7 @@ func TestServiceImpl_Run(t *testing.T) {
 
 	time.Sleep(11 * time.Millisecond)
 	rf.AssertExpectations(t)
-	publicRouter.AssertExpectations(t)
-	readinessRouter.AssertExpectations(t)
-	internalRouter.AssertExpectations(t)
+	router.AssertExpectations(t)
 	rootH.AssertExpectations(t)
 	livenessH.AssertExpectations(t)
 	readinessH.AssertExpectations(t)
@@ -326,7 +308,7 @@ func TestServiceImpl_Run(t *testing.T) {
 	versionH.AssertExpectations(t)
 }
 
-func TestServiceImpl_Run_NoPublicRootHandler(t *testing.T) {
+func TestServiceImpl_Run_NoPublicServiceHandlers(t *testing.T) {
 	logFactory := &mockLogFactory{}
 	log := &mockLogger{}
 	m := &mockMetrics{}
@@ -334,9 +316,7 @@ func TestServiceImpl_Run_NoPublicRootHandler(t *testing.T) {
 	rf := &mockRouterFactory{}
 	stateManager := &mockServiceStateManager{}
 
-	publicRouter := &mockRouter{}
-	readinessRouter := &mockRouter{}
-	internalRouter := &mockRouter{}
+	router := &mockRouter{}
 
 	var handle sf.Handle = func(sf.WrappedResponseWriter, *http.Request, sf.HandlerUtils) {}
 
@@ -365,33 +345,15 @@ func TestServiceImpl_Run_NoPublicRootHandler(t *testing.T) {
 	log.On("Debug", mock.Anything, mock.Anything, mock.Anything)
 	v.On("ToString").Return("(version)")
 	rootH.On("NewRootHandler").Return(handle).Twice()
-	livenessH.On("NewLivenessHandler").Return(handle).Twice()
-	readinessH.On("NewReadinessHandler").Return(handle).Twice()
+	livenessH.On("NewLivenessHandler").Return(handle).Once()
+	readinessH.On("NewReadinessHandler").Return(handle).Once()
 	healthH.On("NewHealthHandler").Return(handle).Once()
 	metricsH.On("NewMetricsHandler").Return(handle).Once()
 	quitH.On("NewQuitHandler").Return(handle).Once()
-	versionH.On("NewVersionHandler").Return(handle).Once()
 	rf.
 		On("NewRouter").
-		Return(readinessRouter).
+		Return(router).
 		Once()
-	rf.
-		On("NewRouter").
-		Return(internalRouter).
-		Once()
-	rf.
-		On("NewRouter").
-		Return(publicRouter).
-		Once()
-	publicRouter.
-		On("Handle", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Times(5)
-	readinessRouter.
-		On("Handle", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Times(4)
-	internalRouter.
-		On("Handle", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Times(3)
 	stateManager.On("WarmUp").Once()
 	stateManager.On("ShutDown", mock.Anything).Run(func(args mock.Arguments) {
 		fmt.Println("Exit called!")
@@ -406,19 +368,19 @@ func TestServiceImpl_Run_NoPublicRootHandler(t *testing.T) {
 		Globals: sf.ServiceGlobals{
 			AppName: "test-service",
 		},
-		LogFactory:           logFactory,
-		Metrics:              m,
-		Port:                 1234,
-		ReadinessPort:        1235,
-		InternalPort:         1236,
-		ShutdownFunc:         func(log sf.Logger) {},
-		VersionBuilder:       v,
-		RouterFactory:        rf,
-		Handlers:             handlers,
-		ServiceStateManager:  stateManager,
-		ServerTimeout:        time.Second * 3,
-		IdleTimeout:          time.Second * 3,
-		UsePublicRootHandler: false,
+		LogFactory:                  logFactory,
+		Metrics:                     m,
+		Port:                        1234,
+		ReadinessPort:               1235,
+		InternalPort:                1236,
+		ShutdownFunc:                func(log sf.Logger) {},
+		VersionBuilder:              v,
+		RouterFactory:               rf,
+		Handlers:                    handlers,
+		ServiceStateManager:         stateManager,
+		ServerTimeout:               time.Second * 3,
+		IdleTimeout:                 time.Second * 3,
+		CreatePublicServiceHandlers: false,
 	}
 
 	sut := sf.NewService(opt)

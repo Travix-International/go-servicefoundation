@@ -40,24 +40,24 @@ type (
 	// ServiceOptions contains value and references used by the Service implementation. The contents of ServiceOptions
 	// can be used to customize or extend ServiceFoundation.
 	ServiceOptions struct {
-		Globals                  ServiceGlobals
-		Port                     int
-		ReadinessPort            int
-		InternalPort             int
-		LogFactory               LogFactory
-		Metrics                  Metrics
-		RouterFactory            RouterFactory
-		MiddlewareWrapperFactory MiddlewareWrapperFactory
-		CORSOptions              CORSOptions
-		Handlers                 Handlers
-		VersionBuilder           VersionBuilder
-		ServiceStateManager      ServiceStateManager
-		ShutdownFunc             ShutdownFunc
-		AuthFunc                 AuthorizationFunc
-		ServerTimeout            time.Duration
-		IdleTimeout              time.Duration
-		UsePublicRootHandler     bool
-		systemLogger             Logger
+		Globals                     ServiceGlobals
+		Port                        int
+		ReadinessPort               int
+		InternalPort                int
+		LogFactory                  LogFactory
+		Metrics                     Metrics
+		RouterFactory               RouterFactory
+		MiddlewareWrapperFactory    MiddlewareWrapperFactory
+		CORSOptions                 CORSOptions
+		Handlers                    Handlers
+		VersionBuilder              VersionBuilder
+		ServiceStateManager         ServiceStateManager
+		ShutdownFunc                ShutdownFunc
+		AuthFunc                    AuthorizationFunc
+		ServerTimeout               time.Duration
+		IdleTimeout                 time.Duration
+		CreatePublicServiceHandlers bool
+		systemLogger                Logger
 	}
 
 	// Service is the main interface for ServiceFoundation and is used to define routing and running the service.
@@ -68,27 +68,28 @@ type (
 	}
 
 	serviceImpl struct {
-		globals              ServiceGlobals
-		serverTimeout        time.Duration
-		idleTimeout          time.Duration
-		port                 int
-		readinessPort        int
-		internalPort         int
-		logFactory           LogFactory
-		log                  Logger
-		metrics              Metrics
-		publicRouter         Router
-		readinessRouter      Router
-		internalRouter       Router
-		handlers             Handlers
-		versionBuilder       VersionBuilder
-		stateManager         ServiceStateManager
-		shutdownFunc         ShutdownFunc
-		exitFunc             ExitFunc
-		quitting             bool
-		sendChan             chan bool
-		receiveChan          chan bool
-		usePublicRootHandler bool
+		globals                     ServiceGlobals
+		serverTimeout               time.Duration
+		idleTimeout                 time.Duration
+		port                        int
+		readinessPort               int
+		internalPort                int
+		logFactory                  LogFactory
+		log                         Logger
+		metrics                     Metrics
+		publicRouter                Router
+		readinessRouter             Router
+		internalRouter              Router
+		handlers                    Handlers
+		versionBuilder              VersionBuilder
+		stateManager                ServiceStateManager
+		shutdownFunc                ShutdownFunc
+		exitFunc                    ExitFunc
+		quitting                    bool
+		sendChan                    chan bool
+		receiveChan                 chan bool
+		hasCustomRouter             bool
+		createPublicServiceHandlers bool
 	}
 )
 
@@ -135,6 +136,7 @@ func NewServiceOptions(group, name string,
 	versionBuilder := NewVersionBuilder(version)
 	middlewareWrapperFactory := NewMiddlewareWrapperFactory(logger, globals)
 	port := env.AsInt(envHTTPpPort, defaultHTTPPort)
+	routerFactory := NewRouterFactory(logFactory, metrics)
 
 	opt := ServiceOptions{
 		Globals:                  globals,
@@ -145,7 +147,7 @@ func NewServiceOptions(group, name string,
 		InternalPort:             port + 2,
 		MiddlewareWrapperFactory: middlewareWrapperFactory,
 		CORSOptions:              corsOptions,
-		RouterFactory:            NewRouterFactory(logFactory, metrics),
+		RouterFactory:            routerFactory,
 		LogFactory:               logFactory,
 		Metrics:                  metrics,
 		VersionBuilder:           versionBuilder,
@@ -153,8 +155,8 @@ func NewServiceOptions(group, name string,
 			// By default, anyone is authorized
 			return true
 		},
-		UsePublicRootHandler: true,
-		systemLogger:         logger,
+		CreatePublicServiceHandlers: false, // We'll check if a custom router is used in this case.
+		systemLogger:                logger,
 	}
 	return opt
 }
@@ -166,26 +168,34 @@ func NewService(options ServiceOptions) Service {
 		options.systemLogger = options.LogFactory.NewLogger(serviceMeta)
 	}
 
+	internalRouterFactory := options.RouterFactory
+
+	if _, ok := internalRouterFactory.(*routerFactoryImpl); !ok {
+		// Always use httprouter for internal services, because we need to add our own rules
+		internalRouterFactory = NewRouterFactory(options.LogFactory, options.Metrics)
+	}
+
 	service := serviceImpl{
-		globals:              options.Globals,
-		serverTimeout:        options.ServerTimeout,
-		idleTimeout:          options.IdleTimeout,
-		port:                 options.Port,
-		readinessPort:        options.ReadinessPort,
-		internalPort:         options.InternalPort,
-		logFactory:           options.LogFactory,
-		log:                  options.systemLogger,
-		metrics:              options.Metrics,
-		publicRouter:         options.RouterFactory.NewRouter(),
-		readinessRouter:      options.RouterFactory.NewRouter(),
-		internalRouter:       options.RouterFactory.NewRouter(),
-		handlers:             options.Handlers,
-		versionBuilder:       options.VersionBuilder,
-		stateManager:         options.ServiceStateManager,
-		exitFunc:             newExitFunc(options.systemLogger, options.ServiceStateManager),
-		sendChan:             make(chan bool, 1),
-		receiveChan:          make(chan bool, 1),
-		usePublicRootHandler: options.UsePublicRootHandler,
+		globals:                     options.Globals,
+		serverTimeout:               options.ServerTimeout,
+		idleTimeout:                 options.IdleTimeout,
+		port:                        options.Port,
+		readinessPort:               options.ReadinessPort,
+		internalPort:                options.InternalPort,
+		logFactory:                  options.LogFactory,
+		log:                         options.systemLogger,
+		metrics:                     options.Metrics,
+		publicRouter:                options.RouterFactory.NewRouter(),
+		readinessRouter:             internalRouterFactory.NewRouter(),
+		internalRouter:              internalRouterFactory.NewRouter(),
+		handlers:                    options.Handlers,
+		versionBuilder:              options.VersionBuilder,
+		stateManager:                options.ServiceStateManager,
+		exitFunc:                    newExitFunc(options.systemLogger, options.ServiceStateManager),
+		sendChan:                    make(chan bool, 1),
+		receiveChan:                 make(chan bool, 1),
+		hasCustomRouter:             options.RouterFactory != internalRouterFactory,
+		createPublicServiceHandlers: options.CreatePublicServiceHandlers,
 	}
 
 	service.stateManager.WarmUp()
@@ -409,12 +419,14 @@ func (s *serviceImpl) runInternalServer() {
 func (s *serviceImpl) runPublicServer() {
 	router := s.publicRouter
 
-	if s.usePublicRootHandler {
+	if s.hasCustomRouter && !s.createPublicServiceHandlers {
+		s.log.Info("PublicRouter", "Using custom router and skipping creating of public service handlers: root, service/version, service/liveness and service/readiness")
+	} else {
 		s.addRoute(router, publicSubsystem, "root", []string{"/"}, MethodsForGet, DefaultMiddlewares, s.handlers.RootHandler.NewRootHandler())
+		s.addRoute(router, publicSubsystem, "version", []string{"/service/version"}, MethodsForGet, DefaultMiddlewares, s.handlers.VersionHandler.NewVersionHandler())
+		s.addRoute(router, publicSubsystem, "liveness", []string{"/service/liveness"}, MethodsForGet, DefaultMiddlewares, s.handlers.LivenessHandler.NewLivenessHandler())
+		s.addRoute(router, publicSubsystem, "readiness", []string{"/service/readiness"}, MethodsForGet, DefaultMiddlewares, s.handlers.ReadinessHandler.NewReadinessHandler())
 	}
-	s.addRoute(router, publicSubsystem, "version", []string{"/service/version"}, MethodsForGet, DefaultMiddlewares, s.handlers.VersionHandler.NewVersionHandler())
-	s.addRoute(router, publicSubsystem, "liveness", []string{"/service/liveness"}, MethodsForGet, DefaultMiddlewares, s.handlers.LivenessHandler.NewLivenessHandler())
-	s.addRoute(router, publicSubsystem, "readiness", []string{"/service/readiness"}, MethodsForGet, DefaultMiddlewares, s.handlers.ReadinessHandler.NewReadinessHandler())
 
 	s.log.Info("RunPublicService", "%s %s running on localhost:%d.", s.globals.AppName, publicSubsystem, s.port)
 

@@ -59,7 +59,7 @@ func main() {
 		[]string{"/helloworld"},
 		sf.MethodsForGet,
 		[]sf.Middleware{sf.PanicTo500, sf.CORS, sf.RequestMetrics},
-		func(r *http.Request, _ sf.RouterParams) map[string]string {
+		func(r *http.Request, _ sf.RouteParamsFunc) sf.Meta {
         		return make(map[string]string)
         },
 		func(w sf.WrappedResponseWriter, r *http.Request, _ sf.HandlerUtils) {
@@ -164,9 +164,10 @@ func main() {
         return true 
     }
 	
-	// Use this in case you want to handle the public root endpoint yourself instead of relying 
-	// on the default catch-all handling.
-	opt.UsePublicRootHandler = true
+	// You can implement your own router and binding it using the ServiceOptions:
+	//opt.RouterFactory = (...) 
+	// Please note that if you use your own RouterFactory, you'll have to handle the public service endpoints yourself: 
+	// service/version, service/liveness and service/readiness
 
 	opt.SetState(&CustomServiceStateManager{})
 
@@ -177,7 +178,7 @@ func main() {
 		[]string{"/helloworld"},
 		sf.MethodsForGet,
 		[]sf.Middleware{sf.PanicTo500, sf.CORS, sf.RequestMetrics},
-		func(r *http.Request, _ sf.RouterParams) map[string]string {
+		func(r *http.Request, _ sf.RouteParamsFunc) sf.Meta {
             // Use a route-specific meta to log additional fields for handling a route request 
             routeMeta := make(map[string]string)
             routeMeta["hello"] = "route"
