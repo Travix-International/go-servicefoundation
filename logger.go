@@ -1,11 +1,9 @@
 package servicefoundation
 
 import (
-	"fmt"
-	"os"
 	"strings"
 
-	"github.com/Travix-International/logger"
+	log "github.com/Travix-International/go-log"
 )
 
 const (
@@ -18,16 +16,16 @@ const (
 type (
 	// Logger is a wrapper around the Logger package and extending it with log level filtering and simplified formatting.
 	Logger interface {
-		Debug(event, formatOrMsg string, a ...interface{}) error
-		Info(event, formatOrMsg string, a ...interface{}) error
-		Warn(event, formatOrMsg string, a ...interface{}) error
-		Error(event, formatOrMsg string, a ...interface{}) error
-		GetLogger() *logger.Logger
+		Debug(event, formatOrMsg string, a ...interface{})
+		Info(event, formatOrMsg string, a ...interface{})
+		Warn(event, formatOrMsg string, a ...interface{})
+		Error(event, formatOrMsg string, a ...interface{})
+		GetLogger() log.Logger
 	}
 
 	loggerImpl struct {
 		logMinLevel int
-		logger      *logger.Logger
+		logger      log.Logger
 	}
 
 	// LogFactory can be used to instantiate a new logger
@@ -74,13 +72,26 @@ func NewLogFactory(logFilter string, baseMeta map[string]string) LogFactory {
 // NewLogger instantiates a new Logger implementation.
 func (f *logFactoryImpl) NewLogger(meta map[string]string) Logger {
 	logMeta := combineMetas(meta, f.baseMeta)
-	log, _ := logger.New(logMeta)
-	formatter := NewLogFormatter()
-	consoleTransport := logger.NewTransport(os.Stdout, formatter)
-	log.AddTransport(consoleTransport)
+
+	cfg := log.NewLoggerConfig()
+	cfg.AppGroup = logMeta["entry.applicationgroup"]
+	cfg.AppName = logMeta["entry.applicationname"]
+	cfg.AppVersion = logMeta["entry.applicationversion"]
+	cfg.HostName = logMeta["entry.machinename"]
+
+	switch f.logLevel {
+	case minDebugLevel:
+		cfg.LogLevel = log.DebugLevel
+	case minInfoLevel:
+		cfg.LogLevel = log.InfoLevel
+	default:
+		cfg.LogLevel = log.WarnLevel
+	}
+
+	logger := log.NewLogger(cfg)
 
 	return &loggerImpl{
-		logger:      log,
+		logger:      logger,
 		logMinLevel: f.logLevel,
 	}
 }
@@ -101,47 +112,47 @@ func combineMetas(meta1, meta2 map[string]string) map[string]string {
 
 /* Logger implementation */
 
-func (l *loggerImpl) Debug(event, formatOrMsg string, a ...interface{}) error {
+func (l *loggerImpl) Debug(event, formatOrMsg string, a ...interface{}) {
 	if l.logMinLevel > minDebugLevel {
-		return nil
+		return
 	}
 
 	if len(a) == 0 {
-		return l.logger.Debug(event, formatOrMsg)
+		l.logger.Debug(event).Log(formatOrMsg)
+		return
 	}
-	return l.logger.Debug(event, fmt.Sprintf(formatOrMsg, a...))
+	l.logger.Debug(event).Logf(formatOrMsg, a...)
 }
 
-func (l *loggerImpl) Info(event, formatOrMsg string, a ...interface{}) error {
+func (l *loggerImpl) Info(event, formatOrMsg string, a ...interface{}) {
 	if l.logMinLevel > minInfoLevel {
-		return nil
+		return
 	}
 
 	if len(a) == 0 {
-		return l.logger.Info(event, formatOrMsg)
+		l.logger.Info(event).Log(formatOrMsg)
 	}
-	msg := fmt.Sprintf(formatOrMsg, a...)
-	return l.logger.Info(event, msg)
+	l.logger.Info(event).Logf(formatOrMsg, a...)
 }
 
-func (l *loggerImpl) Warn(event, formatOrMsg string, a ...interface{}) error {
+func (l *loggerImpl) Warn(event, formatOrMsg string, a ...interface{}) {
 	if l.logMinLevel > minWarnLevel {
-		return nil
+		return
 	}
 
 	if len(a) == 0 {
-		return l.logger.Warn(event, formatOrMsg)
+		l.logger.Warn(event).Log(formatOrMsg)
 	}
-	return l.logger.Warn(event, fmt.Sprintf(formatOrMsg, a...))
+	l.logger.Warn(event).Logf(formatOrMsg, a...)
 }
 
-func (l *loggerImpl) Error(event, formatOrMsg string, a ...interface{}) error {
+func (l *loggerImpl) Error(event, formatOrMsg string, a ...interface{}) {
 	if len(a) == 0 {
-		return l.logger.Error(event, formatOrMsg)
+		l.logger.Error(event).Log(formatOrMsg)
 	}
-	return l.logger.Error(event, fmt.Sprintf(formatOrMsg, a...))
+	l.logger.Error(event).Logf(formatOrMsg, a...)
 }
 
-func (l *loggerImpl) GetLogger() *logger.Logger {
+func (l *loggerImpl) GetLogger() log.Logger {
 	return l.logger
 }
