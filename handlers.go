@@ -51,7 +51,7 @@ type (
 		NewQuitHandler() Handle
 	}
 
-	// QuitHandler is an interface to instantiate a new quit handler.
+	// PreFlightHandler is an interface to instantiate a new quit handler.
 	PreFlightHandler interface {
 		NewPreFlightHandler() Handle
 	}
