@@ -165,6 +165,7 @@ func TestServiceHandlerFactoryImpl_CreateMetricsHandler(t *testing.T) {
 	sut := sf.NewServiceHandlerFactory(m, v, ssr, exitFn)
 
 	w.On("Header").Return(http.Header{}).Once()
+	w.On("WriteHeader", http.StatusOK).Once()
 	w.
 		On("Write", mock.Anything).
 		Return(0, nil).

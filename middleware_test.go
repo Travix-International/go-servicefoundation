@@ -69,7 +69,7 @@ func TestMiddlewareWrapperImpl_Wrap(t *testing.T) {
 		actual := sut.Wrap(subSystem, name, scenario, handle, metaFunc)
 
 		assert.NotNil(t, actual, "Scenario %n", i)
-		assert.NotEqual(t, handle, actual, "Scenario %n", i)
+		assert.NotEqual(t, &handle, &actual, "Scenario %n", i)
 
 		actual(w, r, p)
 		assert.True(t, handleCalled, "Scenario %n", i)
@@ -136,7 +136,7 @@ func TestMiddlewareWrapperImpl_Wrap_PanicsAreHandled(t *testing.T) {
 		actual := sut.Wrap(subSystem, name, scenario, handle, metaFunc)
 
 		assert.NotNil(t, actual, "Scenario %n", i)
-		assert.NotEqual(t, handle, actual, "Scenario %n", i)
+		assert.NotEqual(t, &handle, &actual, "Scenario %n", i)
 		assert.False(t, metaCalled, "Scenario %n", i)
 
 		actual(w, r, p)

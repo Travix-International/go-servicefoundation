@@ -4,17 +4,17 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/Travix-International/go-log"
 	sf "github.com/Travix-International/go-servicefoundation"
-	"github.com/Travix-International/logger"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMetricsImpl(t *testing.T) {
-	log := &mockLogger{}
-	log.
+	logger := mockLogger{}
+	logger.
 		On("GetLogger").
-		Return(logger.New(make(map[string]string)))
-	sut := sf.NewMetrics("testcount", log)
+		Return(log.Nop())
+	sut := sf.NewMetrics("testcount", &logger)
 
 	// Act
 	sut.Count("sub", "count", "help")
@@ -32,5 +32,5 @@ func TestMetricsImpl(t *testing.T) {
 
 	assert.NotNil(t, h)
 	assert.NotNil(t, s)
-	log.AssertExpectations(t)
+	logger.AssertExpectations(t)
 }

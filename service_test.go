@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Travix-International/go-servicefoundation"
 	sf "github.com/Travix-International/go-servicefoundation"
 	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/assert"
@@ -19,7 +18,7 @@ func TestCreateDefaultService(t *testing.T) {
 	}
 
 	// Act
-	sut := servicefoundation.NewService("some-group", "some-name", []string{}, shutdownFn, sf.BuildVersion{}, make(map[string]string))
+	sut := sf.NewService("some-group", "some-name", []string{}, shutdownFn, sf.BuildVersion{}, make(map[string]string))
 
 	assert.NotNil(t, sut)
 }
@@ -62,7 +61,7 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 	}
 	var preFlightHandle sf.Handle = func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
 	handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
-	middlewares := servicefoundation.DefaultMiddlewares
+	middlewares := sf.DefaultMiddlewares
 
 	logFactory.On("NewLogger", mock.Anything).Return(log)
 	shf.
@@ -79,7 +78,7 @@ func TestServiceImpl_AddRoute(t *testing.T) {
 		Times(3) // public, readiness and internal
 	preFlightH.On("NewPreFlightHandler").Return(preFlightHandle)
 
-	sut := servicefoundation.NewCustomService(opt)
+	sut := sf.NewCustomService(opt)
 
 	// Act
 	sut.AddRoute("do", []string{"/do", "/do2"}, []string{http.MethodGet, http.MethodPost}, middlewares, metaFunc, handle)
@@ -127,7 +126,7 @@ func TestServiceImpl_AddRouteWithCORS(t *testing.T) {
 	}
 	var preFlightHandle sf.Handle = func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
 	handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
-	middlewares := append([]sf.Middleware{sf.CORS}, servicefoundation.DefaultMiddlewares...)
+	middlewares := append([]sf.Middleware{sf.CORS}, sf.DefaultMiddlewares...)
 	hasPreFlightCORS := false
 
 	logFactory.On("NewLogger", mock.Anything).Return(log)
@@ -151,7 +150,7 @@ func TestServiceImpl_AddRouteWithCORS(t *testing.T) {
 		Times(3) // public, readiness and internal
 	preFlightH.On("NewPreFlightHandler").Return(preFlightHandle)
 
-	sut := servicefoundation.NewCustomService(opt)
+	sut := sf.NewCustomService(opt)
 
 	// Act
 	sut.AddRoute("do", []string{"/do"}, []string{http.MethodGet}, middlewares, metaFunc, handle)
@@ -199,7 +198,7 @@ func TestServiceImpl_AddRouteWithHandledPreFlight(t *testing.T) {
 		return make(map[string]string)
 	}
 	handle := func(sf.WrappedResponseWriter, *http.Request, sf.RouterParams) {}
-	middlewares := servicefoundation.DefaultMiddlewares
+	middlewares := sf.DefaultMiddlewares
 
 	logFactory.On("NewLogger", mock.Anything).Return(log)
 	shf.
@@ -212,7 +211,7 @@ func TestServiceImpl_AddRouteWithHandledPreFlight(t *testing.T) {
 		Return(router).
 		Times(3) // public, readiness and internal
 
-	sut := servicefoundation.NewCustomService(opt)
+	sut := sf.NewCustomService(opt)
 
 	// Act
 	sut.AddRoute("do", []string{"/do"}, []string{http.MethodGet, http.MethodOptions}, middlewares, metaFunc, handle)
@@ -312,7 +311,7 @@ func TestServiceImpl_Run(t *testing.T) {
 		UsePublicRootHandler: true,
 	}
 
-	sut := servicefoundation.NewCustomService(opt)
+	sut := sf.NewCustomService(opt)
 
 	// Act
 	go sut.Run(ctx)
@@ -420,7 +419,7 @@ func TestServiceImpl_Run_NoPublicRootHandler(t *testing.T) {
 		UsePublicRootHandler: false,
 	}
 
-	sut := servicefoundation.NewCustomService(opt)
+	sut := sf.NewCustomService(opt)
 
 	// Act
 	go sut.Run(ctx)
@@ -438,13 +437,13 @@ func TestServiceImpl_Run_NoPublicRootHandler(t *testing.T) {
 }
 
 func TestNewExitFunc(t *testing.T) {
-	log := &mockLogger{}
+	logger := mockLogger{}
 	shutdownFn := func(log sf.Logger) {}
 
-	log.On("Debug", mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	logger.On("Debug", mock.Anything, mock.Anything, mock.Anything)
 
 	// Act
-	sut := sf.NewExitFunc(log, shutdownFn)
+	sut := sf.NewExitFunc(&logger, shutdownFn)
 
 	assert.NotNil(t, sut)
 	go sut(1)
