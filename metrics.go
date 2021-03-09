@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/Travix-International/go-log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -50,8 +49,8 @@ type (
 // NewMetrics instantiates a new Metrics implementation.
 func NewMetrics(namespace string, logger Logger) Metrics {
 	return &metricsImpl{
-		internalMetrics: newMetrics("", logger.GetLogger()),
-		externalMetrics: newMetrics(strings.ToLower(namespace), logger.GetLogger()),
+		internalMetrics: newMetrics("", logger),
+		externalMetrics: newMetrics(strings.ToLower(namespace), logger),
 	}
 }
 
@@ -123,7 +122,7 @@ type (
 		Histograms      map[string]prometheus.Histogram
 		HistogramVecs   map[string]*prometheus.HistogramVec
 		Gauges          map[string]prometheus.Gauge
-		Logger          log.Logger
+		Logger          Logger
 		countMutex      *sync.RWMutex
 		countVecMutex   *sync.RWMutex
 		histMutex       *sync.RWMutex
@@ -157,7 +156,7 @@ type (
 )
 
 // newMetrics will instantiate a new Metrics wrapper object
-func newMetrics(namespace string, logger log.Logger) *metrics {
+func newMetrics(namespace string, logger Logger) *metrics {
 	m := metrics{
 		Namespace:       namespace,
 		Logger:          logger,
@@ -203,8 +202,8 @@ func (m *metrics) Count(subsystem, name, help string) {
 			err := prometheus.Register(counter)
 			if err != nil {
 				m.Logger.
-					Warn("MetricsCounterRegistrationFailed").
-					Logf("CounterHandler: Counter registration %v failed: %v", counter, err)
+					Warn("MetricsCounterRegistrationFailed",
+						"CounterHandler: Counter registration %v failed: %v", counter, err)
 			}
 		}
 		m.countMutex.Unlock()
@@ -233,8 +232,8 @@ func (m *metrics) SetGauge(value float64, subsystem, name, help string) {
 			err := prometheus.Register(gauge)
 			if err != nil {
 				m.Logger.
-					Warn("MetricsSetGaugeFailed").
-					Logf("SetGauge: Gauge registration %v failed: %v", gauge, err)
+					Warn("MetricsSetGaugeFailed",
+						"SetGauge: Gauge registration %v failed: %v", gauge, err)
 			}
 		}
 		m.gaugeMutex.Unlock()
@@ -263,8 +262,8 @@ func (m *metrics) CountLabels(subsystem, name, help string, labels, values []str
 			err := prometheus.Register(counter)
 			if err != nil {
 				m.Logger.
-					Warn("MetricsCounterLabelRegistrationFailed").
-					Logf("CounterLabelHandler: Counter registration %v failed: %v", counter, err)
+					Warn("MetricsCounterLabelRegistrationFailed",
+						"CounterLabelHandler: Counter registration %v failed: %v", counter, err)
 			}
 		}
 		m.countVecMutex.Unlock()
@@ -293,8 +292,8 @@ func (m *metrics) IncreaseCounter(subsystem, name, help string, increment int) {
 			err := prometheus.Register(counter)
 			if err != nil {
 				m.Logger.
-					Warn("MetricsIncreaseCounterRegistrationFailed").
-					Logf("CounterHandler: Counter registration failed: %v: %v", counter, err)
+					Warn("MetricsIncreaseCounterRegistrationFailed",
+						"CounterHandler: Counter registration failed: %v: %v", counter, err)
 			}
 		}
 		m.countMutex.Unlock()

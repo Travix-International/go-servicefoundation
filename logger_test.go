@@ -1,14 +1,13 @@
-package servicefoundation_test
+package servicefoundation
 
 import (
 	"testing"
 
-	sf "github.com/Travix-International/go-servicefoundation"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestLoggerImpl_GetLogger_DebugLevel(t *testing.T) {
-	factory := sf.NewLogFactory("Debug", make(map[string]string))
+	factory := NewLogFactory("Debug", make(map[string]string))
 	sut := factory.NewLogger(make(map[string]string))
 
 	// Act
@@ -16,13 +15,13 @@ func TestLoggerImpl_GetLogger_DebugLevel(t *testing.T) {
 	sut.Info("event", "msg %s %s", "arg1", "arg2")
 	sut.Warn("event", "msg %s %s", "arg1", "arg2")
 	sut.Error("event", "msg %s %s", "arg1", "arg2")
-	logger := sut.GetLogger()
+	logger := sut.(*loggerImpl).logger
 
 	assert.NotNil(t, logger)
 }
 
 func TestLoggerImpl_GetLogger_ErrorLevel(t *testing.T) {
-	factory := sf.NewLogFactory("Error", make(map[string]string))
+	factory := NewLogFactory("Error", make(map[string]string))
 	sut := factory.NewLogger(make(map[string]string))
 
 	// Act
@@ -30,13 +29,13 @@ func TestLoggerImpl_GetLogger_ErrorLevel(t *testing.T) {
 	sut.Info("event", "msg %s %s", "arg1", "arg2")
 	sut.Warn("event", "msg %s %s", "arg1", "arg2")
 	sut.Error("event", "msg %s %s", "arg1", "arg2")
-	logger := sut.GetLogger()
+	logger := sut.(*loggerImpl).logger
 
 	assert.NotNil(t, logger)
 }
 
 func TestLoggerImpl_GetLogger_UnknownLevel(t *testing.T) {
-	factory := sf.NewLogFactory("Whatevah", make(map[string]string))
+	factory := NewLogFactory("Whatevah", make(map[string]string))
 	sut := factory.NewLogger(make(map[string]string))
 
 	// Act
@@ -44,13 +43,13 @@ func TestLoggerImpl_GetLogger_UnknownLevel(t *testing.T) {
 	sut.Info("event", "msg %s %s", "arg1", "arg2")
 	sut.Warn("event", "msg %s %s", "arg1", "arg2")
 	sut.Error("event", "msg %s %s", "arg1", "arg2")
-	logger := sut.GetLogger()
+	logger := sut.(*loggerImpl).logger
 
 	assert.NotNil(t, logger)
 }
 
 func TestLoggerImpl_GetLogger_StaticMsg(t *testing.T) {
-	factory := sf.NewLogFactory("Debug", make(map[string]string))
+	factory := NewLogFactory("Debug", make(map[string]string))
 	sut := factory.NewLogger(make(map[string]string))
 
 	// Act
@@ -58,7 +57,7 @@ func TestLoggerImpl_GetLogger_StaticMsg(t *testing.T) {
 	sut.Info("event", "msg")
 	sut.Warn("event", "msg")
 	sut.Error("event", "msg")
-	logger := sut.GetLogger()
+	logger := sut.(*loggerImpl).logger
 
 	assert.NotNil(t, logger)
 }
@@ -70,7 +69,7 @@ func TestLoggerImpl_GetLogger_CombineMetas(t *testing.T) {
 	meta2 := make(map[string]string)
 	meta2["key3"] = "value3"
 	meta1["key2"] = "value2b"
-	factory := sf.NewLogFactory("Debug", meta1)
+	factory := NewLogFactory("Debug", meta1)
 	sut := factory.NewLogger(meta2)
 
 	// Act
@@ -78,7 +77,7 @@ func TestLoggerImpl_GetLogger_CombineMetas(t *testing.T) {
 	sut.Info("event", "msg %s %s", "arg1", "arg2")
 	sut.Warn("event", "msg %s %s", "arg1", "arg2")
 	sut.Error("event", "msg %s %s", "arg1", "arg2")
-	logger := sut.GetLogger()
+	logger := sut.(*loggerImpl).logger
 
 	assert.NotNil(t, logger)
 }

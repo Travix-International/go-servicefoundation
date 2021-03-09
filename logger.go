@@ -20,7 +20,6 @@ type (
 		Info(event, formatOrMsg string, a ...interface{})
 		Warn(event, formatOrMsg string, a ...interface{})
 		Error(event, formatOrMsg string, a ...interface{})
-		GetLogger() log.Logger
 	}
 
 	loggerImpl struct {
@@ -151,8 +150,4 @@ func (l *loggerImpl) Error(event, formatOrMsg string, a ...interface{}) {
 		l.logger.Error(event).Log(formatOrMsg)
 	}
 	l.logger.Error(event).Logf(formatOrMsg, a...)
-}
-
-func (l *loggerImpl) GetLogger() log.Logger {
-	return l.logger
 }

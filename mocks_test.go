@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	log "github.com/Travix-International/go-log"
 	sf "github.com/Travix-International/go-servicefoundation"
 	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/mock"
@@ -113,11 +112,6 @@ func (m *mockLogger) Warn(event, formatOrMsg string, a ...interface{}) {
 
 func (m *mockLogger) Error(event, formatOrMsg string, a ...interface{}) {
 	m.Called(event, formatOrMsg, a)
-}
-
-func (m *mockLogger) GetLogger() log.Logger {
-	i := m.Called()
-	return i.Get(0).(log.Logger)
 }
 
 /* sf.Metrics mock */
