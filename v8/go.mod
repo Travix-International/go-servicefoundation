@@ -1,4 +1,4 @@
-module github.com/Travix-International/go-servicefoundation
+module github.com/Travix-International/go-servicefoundation/v8
 
 go 1.16
 

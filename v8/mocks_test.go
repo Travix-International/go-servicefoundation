@@ -1,11 +1,11 @@
-package servicefoundation_test
+package v8_test
 
 import (
 	"io"
 	"net/http"
 	"time"
 
-	sf "github.com/Travix-International/go-servicefoundation"
+	sf "github.com/Travix-International/go-servicefoundation/v8"
 	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/testify/mock"
 )

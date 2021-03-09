@@ -1,4 +1,4 @@
-package servicefoundation
+package v8
 
 import (
 	"testing"

@@ -1,3 +1,4 @@
+.PHONY: test clean upgrade
 COVERALLS_TOKEN := "IVQwNa8dypGgtaLmBkFSoBcRcCl0tlqui"
 GITHUB_API_TOKEN := ""
 VERSION :=""
@@ -13,7 +14,7 @@ cover-remote:
 	go test -covermode=count -coverprofile=cover.tmp
 	goveralls -service travis-ci -coverprofile cover.tmp
 
-run-tests:
+test:
 	go test -race -cover -v ./...
 
 cover:
@@ -31,6 +32,9 @@ clean:
 upgrade:
 	go get -u
 	go mod tidy
+
+list-packageversions:
+	go list -u -m all
 
 env:
 	go env
