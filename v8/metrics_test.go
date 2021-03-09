@@ -1,10 +1,10 @@
-package servicefoundation_test
+package v8_test
 
 import (
 	"testing"
 	"time"
 
-	sf "github.com/Travix-International/go-servicefoundation"
+	sf "github.com/Travix-International/go-servicefoundation/v8"
 	"github.com/stretchr/testify/assert"
 )
 
